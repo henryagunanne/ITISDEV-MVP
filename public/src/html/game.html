@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collegiate Basketball Analytics System</title>
+    <link rel="stylesheet" href="../css/game.css">
+</head>
+
+<body>
+
+<header>
+    <h1>Collegiate Basketball Analytics System</h1>
+    <nav>
+        <ul>
+            <li><a href="#">Dashboard</a></li>
+            <li><a href="#">Players</a></li>
+            <li><a href="#">Games</a></li>
+            <li><a href="#">Statistics</a></li>
+        </ul>
+    </nav>
+</header>
+
+<main>
+
+    <!-- Game Information -->
+    <section class="game-info">
+        <h2>Game Information</h2>
+
+        <label>Home Team:</label>
+        <input type="text" placeholder="Enter Home Team">
+
+        <label>Away Team:</label>
+        <input type="text" placeholder="Enter Away Team">
+
+        <label>Game Date:</label>
+        <input type="date">
+
+        <button>Start Game</button>
+    </section>
+
+
+    <!-- Player Stat Encoding -->
+    <section class="stat-encoder">
+        <h2>Encode Player Statistics</h2>
+
+        <form id="statForm">
+
+            <label>Player Name</label>
+            <input type="text" required>
+
+            <label>Points</label>
+            <input type="number" min="0">
+
+            <label>Rebounds</label>
+            <input type="number" min="0">
+
+            <label>Assists</label>
+            <input type="number" min="0">
+
+            <label>Steals</label>
+            <input type="number" min="0">
+
+            <label>Blocks</label>
+            <input type="number" min="0">
+
+            <button type="submit">Add Stats</button>
+
+        </form>
+    </section>
+
+
+    <!-- Real Time Stats Table -->
+    <section class="stats-table">
+        <h2>Game Statistics</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Player</th>
+                    <th>PTS</th>
+                    <th>REB</th>
+                    <th>AST</th>
+                    <th>STL</th>
+                    <th>BLK</th>
+                </tr>
+            </thead>
+
+            <tbody id="statsBody">
+                <!-- Stats will be inserted here by JavaScript -->
+            </tbody>
+        </table>
+    </section>
+
+</main>
+
+
+<footer>
+    <p>© 2026 Collegiate Basketball Analytics System</p>
+</footer>
+
+
+<script src="../javascript/game.js"></script>
+
+</body>
+</html>
