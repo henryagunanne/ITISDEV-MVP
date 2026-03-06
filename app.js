@@ -59,6 +59,12 @@ app.use((req, res, next) => {
 
 // Routes
 app.use('/', require('./routes/index')); // Home and general routes
+app.use('/users', require('./routes/users')); // User authentication and profile routes
+// app.use('/teams', require('./routes/teams')); // College basketball teams routes
+app.use('/players', require('./routes/players')); // Players routes
+app.use('/games', require('./routes/games')); // Games routes
+app.use('/admin', require('./routes/admin')); // Admin routes for managing teams, players, games, etc.
+app.use('/analytics', require('./routes/analytics')); // Analytics routes
 
 
 // 404 handler - for unmatched routes

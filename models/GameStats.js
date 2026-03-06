@@ -1,7 +1,6 @@
 // Each document represents one player’s performance in one game.
 
 const mongoose = require('mongoose');
-const { off } = require('./Game');
 
 // Define the schema for Game Stats
 const gameStatsSchema = new mongoose.Schema({

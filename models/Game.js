@@ -35,7 +35,8 @@ const gameSchema = new mongoose.Schema({
     },
     gameType: {
         type: gameTypeSchema, 
-        required: true},
+        required: true
+    },
     venue: {
         type: String,
         required: true,
