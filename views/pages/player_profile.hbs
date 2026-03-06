@@ -1,0 +1,48 @@
+<h1>{{player.name}}</h1>
+
+<div class="profile-header">
+    <img src="{{player.photo}}" class="profile-photo">
+
+    <div>
+        <p>#{{player.number}} - {{player.position}}</p>
+        <p>Year: {{player.year}}</p>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="card">PPG: {{stats.ppg}}</div>
+    <div class="card">RPG: {{stats.rpg}}</div>
+    <div class="card">APG: {{stats.apg}}</div>
+    <div class="card">FG%: {{stats.fg}}</div>
+</div>
+
+<div class="card wide">
+    <canvas id="playerTrend"></canvas>
+</div>
+
+<h2>Game Logs</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Game</th>
+            <th>Opponent</th>
+            <th>Points</th>
+            <th>Rebounds</th>
+            <th>Assists</th>
+            <th></th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {{#each gameLogs}}
+        <tr>
+            <td>{{this.date}}</td>
+            <td>{{this.opponent}}</td>
+            <td>{{this.points}}</td>
+            <td>{{this.rebounds}}</td>
+            <td>{{this.assists}}</td>
+        </tr>
+        {{/each}}
+    </tbody>
+</table>

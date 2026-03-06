@@ -1,0 +1,29 @@
+<h1>Players</h1>
+
+<input type="text" placeholder="Search players..." class="search-input">
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Photo</th>
+            <th>Name</th>
+            <th>Number</th>
+            <th>Position</th>
+            <th>Year</th>
+            <th>View</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {{#each players}}
+            <tr>
+                <td><img src="{{this.photo}}" class="player-photo"></td>
+                <td>{{this.name}}</td>
+                <td>{{this.number}}</td>
+                <td>{{this.position}}</td>
+                <td>{{this.year}}</td>
+                <td><a href="/players/{{this._id}}" class="btn-secondary">View</a></td>
+            </tr>
+        {{/each}}
+    </tbody>
+</table>

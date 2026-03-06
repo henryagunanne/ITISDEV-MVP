@@ -1,0 +1,25 @@
+<h1>Games</h1>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Opponent</th>
+            <th>Result</th>
+            <th>Encode</th>
+            <th>View</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {{#each games}}
+        <tr>
+            <td>{{this.date}}</td>
+            <td>{{this.opponent}}</td>
+            <td>{{this.result}}</td>
+            <td><a href="/games/{{this._id}}/encode" class="btn-primary">Encode</a></td>
+            <td><a href="/games/{{this._id}}" class="btn-secondary">View</a></td>
+        </tr>
+        {{/each}}
+    </tbody>
+</table>
