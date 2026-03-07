@@ -1,5 +1,5 @@
 const server = require('./app');
-const PORT = 3000;  // Server port
+const PORT = process.env.PORT || 3000; // Server port
 
 
 // Start Server

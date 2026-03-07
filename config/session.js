@@ -1,4 +1,3 @@
-const session = require('express-session'); // Session management
 const MongoStore = require('connect-mongo'); // MongoDB session store
 
 const sessionConfig = {
@@ -17,4 +16,4 @@ const sessionConfig = {
     }
 };
 
-module.exports = session(sessionConfig);
+module.exports = sessionConfig;

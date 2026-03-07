@@ -1,22 +1,20 @@
 // Express + Mongoose + Handlebars
-const express = require("express");
-const app = express();
-const mongoose = require('mongoose'); // MongoDB ODM
+require('dotenv').config(); // Load environment variables from .env file
+const express = require("express"); // Express framework
 const exphbs = require('express-handlebars'); // Handlebars templating engine
 const session = require('express-session'); // Session management
-const MongoStore = require('connect-mongo'); // MongoDB session store
+const connectDB = require('./config/db');
+const sessionConfig = require('./config/session');
 const path = require('path');
+
+const app = express(); // Create Express app
 
 // System logging
 // logging setup goes here
 
 // Connect to MongoDB
 if (process.env.NODE_ENV !== 'test') {
-    mongoose.connect('mongodb://127.0.0.1:27017/collegeBasketballDB')
-    .then(async () => {
-        console.log('✅ MongoDB connected.');
-    })
-    .catch(err => console.error('MongoDB connection error:', err));
+    connectDB();
 }
 
 // Configure Handlebars and handlebars helpers
@@ -32,22 +30,8 @@ app.set('views', path.join(__dirname, 'views')); // Set views directory
 // Middleware
 app.use(express.json()); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
+app.use(session(sessionConfig)); // Session management with MongoDB store
 app.use(express.static(path.join(__dirname, 'public'))); // Serve static files from 'public' folder
-
-
-// Session management with MongoDB store
-app.use(session({
-    secret: 'DLSU1234!', // Secret for signing session ID cookies (use env variable in production)
-    resave: false,  // Don't save session if unmodified
-    saveUninitialized: false,   // Don't create session until something stored
-    store: MongoStore.create({ mongoUrl: 'mongodb://127.0.0.1:27017/collegeBasketballDB' }),   // Store sessions in MongoDB
-    cookie: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // secure cookies in prod
-      sameSite: 'lax',
-      maxAge: 1000 * 60 * 60 * 24 // 1 day
-    }
-}));
 
 
 // Make user data available in all views (for authentication status, etc.)
