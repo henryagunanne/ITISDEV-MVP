@@ -105,5 +105,8 @@ gameStatsSchema.pre('find', function (next) {
     next();
 });
 
+// Prevent duplicate stats for same player in same game
+gameStatsSchema.index({ gameId: 1, playerId: 1 }, { unique: true });
+
 // Create and export the GameStats model
 module.exports = mongoose.model('GameStats', gameStatsSchema);

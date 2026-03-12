@@ -8,19 +8,6 @@
 
 const mongoose = require('mongoose');
 
-// Define the schema for a Game Type
-const gameTypeSchema = new mongoose.Schema({
-    name: {
-        type: String,
-        enum: ["Preseason", "UAAP", "Tune-Up"],
-        required: true,
-        default: "Preseason"
-    },
-    description: {
-        type: String,
-        trim: true
-    },
-});
 
 // Define the schema for a Game
 const gameSchema = new mongoose.Schema({
@@ -33,17 +20,15 @@ const gameSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
-    gameType: {
-        type: gameTypeSchema, 
+    tournament: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Tournament",
         required: true
     },
     venue: {
         type: String,
         required: true,
         trim: true
-    },
-    season: {
-        type: String,
     },
     result: {
       type: String,
@@ -59,7 +44,7 @@ const gameSchema = new mongoose.Schema({
     },
     status: {
       type: String,
-      enum: ["Scheduled", "Completed"]
+      enum: ["Scheduled", "Completed", "Cancelled"],
     },
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
@@ -76,7 +61,7 @@ const gameSchema = new mongoose.Schema({
     }
 });
 
-// Pre-save hook to update the updatedAt field
+// Update timestamp
 gameSchema.pre('save', function (next) {
     this.updatedAt = Date.now();
     next();
@@ -84,24 +69,11 @@ gameSchema.pre('save', function (next) {
 
 // Automatically populate user reference
 gameSchema.pre('find', function (next) {
-    this.populate('createdBy', 'username email');
+    this.populate('createdBy', 'username email')
+    .populate('tournament'); // Populate all fields in the tournament schema
     next();
 });
 
 
 // Export the Game model for use in other files 
 module.exports = mongoose.model('Game', gameSchema);
-
-// Example of creating a new game document
-// const newGame = new Game({
-//     gameDate: new Date('2024-09-01'),   
-//     opponent: 'Rival Team',
-//     gameType: { name: 'UAAP', description: 'University Athletic Association of the Philippines' },
-//     venue: 'Home Court',
-//     season: '2024-2025',
-//     result: 'Win',
-//     teamScore: 85,
-//     opponentScore: 78,
-//     status: 'Completed',
-//     createdBy: someUserId
-// });

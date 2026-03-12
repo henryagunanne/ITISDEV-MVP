@@ -61,5 +61,13 @@ playerSchema.pre('save', function (next) {
     next();
 });
 
+// Automatically combine firstname and lastname into a virtual field
+playerSchema.virtual('fullName').get(function () {
+    return `${this.firstName} ${this.lastName}`;
+});
+
+playerSchema.set('toJSON', { virtuals: true });
+playerSchema.set('toObject', { virtuals: true });
+
 // Create and export the Player model
 module.exports = mongoose.model('Player', playerSchema);
