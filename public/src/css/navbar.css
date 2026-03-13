@@ -1,0 +1,30 @@
+/* Spartan Green Theme */
+
+.archers-navbar{
+    background-color:#18453B;
+}
+
+/* Sidebar */
+
+.sidebar{
+    height:100vh;
+    background:#1f5a4c;
+    padding:20px;
+}
+
+.sidebar a{
+    display:block;
+    padding:10px;
+    color:white;
+    text-decoration:none;
+    border-radius:5px;
+}
+
+.sidebar a:hover{
+    background:#18453B;
+}
+
+.sidebar-title{
+    color:#ddd;
+    font-weight:bold;
+}
