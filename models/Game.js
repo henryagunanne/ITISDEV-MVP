@@ -30,9 +30,34 @@ const gameSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
-    result: {
-      type: String,
-      enum: ["Win", "Loss"]
+    startTime: {
+        type: Date,
+        required: true
+    },
+    quarterScores: {
+        q1: {
+            team: { type: Number, default: 0 },
+            opponent: { type: Number, default: 0 }
+        },
+        q2: {
+            team: { type: Number, default: 0 },
+            opponent: { type: Number, default: 0 }
+        },
+        q3: {
+            team: { type: Number, default: 0 },
+            opponent: { type: Number, default: 0 }
+        },
+        q4: {
+            team: { type: Number, default: 0 },
+            opponent: { type: Number, default: 0 }
+        },
+    
+        overtimes: [
+            {
+                team: { type: Number, default: 0 },
+                opponent: { type: Number, default: 0 }
+            }
+        ]
     },
     teamScore: {
         type: Number,
@@ -41,6 +66,10 @@ const gameSchema = new mongoose.Schema({
     opponentScore: {
         type: Number,
         required: true,
+    },
+    result: {
+        type: String,
+        enum: ["Win", "Loss"]
     },
     status: {
       type: String,
@@ -73,6 +102,30 @@ gameSchema.pre('find', function (next) {
     .populate('tournament'); // Populate all fields in the tournament schema
     next();
 });
+
+// Method to calculate final score based on quarter scores and overtimes
+gameSchema.methods.calculateFinalScore = function () {
+
+    let teamTotal =
+        this.quarterScores.q1.team +
+        this.quarterScores.q2.team +
+        this.quarterScores.q3.team +
+        this.quarterScores.q4.team;
+
+    let opponentTotal =
+        this.quarterScores.q1.opponent +
+        this.quarterScores.q2.opponent +
+        this.quarterScores.q3.opponent +
+        this.quarterScores.q4.opponent;
+
+    this.quarterScores.overtimes.forEach(ot => {
+        teamTotal += ot.team;
+        opponentTotal += ot.opponent;
+    });
+
+    this.teamScore = teamTotal;
+    this.opponentScore = opponentTotal;
+};
 
 
 // Export the Game model for use in other files 

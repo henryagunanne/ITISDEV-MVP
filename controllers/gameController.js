@@ -1,72 +1,53 @@
 const Game = require("../models/Game");
 const Tournament = require('../models/Tournament');
 
-// Create Game
+// Create a new game
 exports.createGame = async (req, res) => {
     try {
-        const {
-            gameDate,
-            opponent,
-            tournament, // id of the tournament
-            venue,  
-            teamScore,
-            opponentScore,
-            status,
-        } = req.body;
+        const game = new Game({
+            gameDate: req.body.gameDate,
+            opponent: req.body.opponent,
+            tournament: req.body.tournament,
+            venue: req.body.venue,
+            startTime: req.body.startTime,
+            quarterScores: req.body.quarterScores,
+            teamScore: req.body.teamScore,
+            opponentScore: req.body.opponentScore,
+            status: req.body.status,
+            createdBy: req.session.user.id  
+        });
 
-        // Validate required fields
-        if (
-            !gameDate ||
-            !opponent ||
-            !tournament ||
-            !venue ||
-            teamScore === undefined ||
-            opponentScore === undefined 
-        ) {
-            return res.status(400).json({
-                success: false,
-                message: "Missing required fields."
+         // Validate required fields
+        if (!game.gameDate || !game.opponent || !game.tournament || !game.venue || !game.startTime) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Missing required fields: gameDate, opponent, tournament, startTime, and venue are required." 
             });
         }
 
-        // Validate tournament exists
-        const tournamentExists = await Tournament.findById(tournament);
-        if (!tournamentExists) {
-            return res.status(404).json({
-                success: false,
-                message: "Tournament not found."
-            });
+        // Calculate final score if quarterScores provided
+        if (game.quarterScores) {
+            game.calculateFinalScore();
         }
+
         // Determine result automatically
         let result;
 
-        if (teamScore > opponentScore) {
+        if (game.teamScore > game.opponentScore) {
             result = "Win";
-        } else if (teamScore < opponentScore) {
+        } else if (game.teamScore < game.opponentScore) {
             result = "Loss";
-        } else if (teamScore === opponentScore) {
+        } else if (game.teamScore === game.opponentScore) {
             result = null;
         }
 
-        // Create new Game document
-        const game = new Game({
-            gameDate,
-            opponent,
-            tournament,
-            venue,
-            result,
-            teamScore,
-            opponentScore,
-            status,
-            createdBy: req.session.user.id 
-        });
+        game.result = result;
 
-        const savedGame = await game.save();
-
-        res.status(201).json({
-            success: true,
-            message: "Game created successfully.",
-            data: savedGame
+        await game.save();
+        await game.populate('createdBy', 'username email').populate('tournament');
+        res.status(201).json({ 
+            success: true, 
+            data: game 
         });
     } catch (error) {
         res.status(500).json({
@@ -77,10 +58,18 @@ exports.createGame = async (req, res) => {
     }
 };
 
-// Get All Games - with optional sorting by date (newest first)
-exports.getAllGames = async (req, res) => {
+
+// Get all games (optionally filter by tournament)
+exports.getGames = async (req, res) => {
     try {
-        const games = await Game.find().sort({ gameDate: -1 }).lean();
+        const filter = {};
+        if (req.query.tournament) {
+            filter.tournament = req.query.tournament;
+        }
+        const games = await Game.find(filter)
+            .populate('createdBy', 'username email')
+            .populate('tournament').sort({ gameDate: -1 });
+            
         res.status(200).json({
             success: true,
             count: games.length,
@@ -574,10 +563,10 @@ exports.updateGame = async (req, res) => {
         const {
             gameDate,
             opponent,
-            tournament, // id of the tournament
+            tournament,
             venue,
-            teamScore,
-            opponentScore,
+            startTime,
+            quarterScores,
             status
         } = req.body;
 
@@ -585,11 +574,15 @@ exports.updateGame = async (req, res) => {
         if (gameDate) game.gameDate = gameDate;
         if (opponent) game.opponent = opponent;
         if (tournament) game.tournament = tournament;
+        if (startTime) game.startTime = startTime;
+        if (quarterScores) game.quarterScores = quarterScores;
         if (venue) game.venue = venue;
         if (status) game.status = status;
 
-        if (teamScore != null) game.teamScore = teamScore;
-        if (opponentScore != null) game.opponentScore = opponentScore;
+        // Recalculate final score if quarterScores changed
+        if (quarterScores) {
+            game.calculateFinalScore();
+        }
 
         // Update result automatically
         if (game.teamScore > game.opponentScore) {
@@ -599,6 +592,7 @@ exports.updateGame = async (req, res) => {
         }
 
         const updatedGame = await game.save();
+        await game.populate('createdBy', 'username email').populate('tournament');
 
         res.status(200).json({
             success: true,
