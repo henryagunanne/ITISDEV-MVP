@@ -6,10 +6,6 @@ const gameEventSchema = new mongoose.Schema({
         ref: "Game",
         required: true
     },
-    teamId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Team"
-    },
     playerId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Player"
@@ -27,7 +23,8 @@ const gameEventSchema = new mongoose.Schema({
             "shot_made",
             "shot_missed",
             "free_throw",
-            "rebound",
+            "offensive rebound",
+            "defensive rebound",
             "assist",
             "steal",
             "block",

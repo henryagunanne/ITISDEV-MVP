@@ -47,14 +47,18 @@ exports.updateGameStats = async (req, res) => {
         const { id } = req.params;
         const updateData = req.body;
 
-        const updatedStats = await GameStats.findByIdAndUpdate(id, updateData, { new: true });
-
+        const updatedStats = await GameStats.findById(id);
+        
         if (!updatedStats) {
             return res.status(404).json({
                 success: false,
                 message: "Game stats not found."
             });
         }
+
+        Object.assign(updatedStats, updateData);    // Update the document with new data
+
+        await updatedStats.save();
 
         res.status(200).json({
             success: true,
@@ -65,6 +69,34 @@ exports.updateGameStats = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Error updating game stats.",
+            error: error.message
+        });
+    }
+};
+
+
+// Delete game stats by ID
+exports.deleteGameStats = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const deletedStats = await GameStats.findByIdAndDelete(id);
+
+        if (!deletedStats) {
+            return res.status(404).json({
+                success: false,
+                message: "Game stats not found."
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Game stats deleted successfully."
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error deleting game stats.",
             error: error.message
         });
     }
@@ -114,40 +146,13 @@ exports.getStatsByPlayerId = async (req, res) => {
 };
 
 
-// Delete game stats by ID
-exports.deleteGameStats = async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        const deletedStats = await GameStats.findByIdAndDelete(id);
-
-        if (!deletedStats) {
-            return res.status(404).json({
-                success: false,
-                message: "Game stats not found."
-            });
-        }
-
-        res.status(200).json({
-            success: true,
-            message: "Game stats deleted successfully."
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Error deleting game stats.",
-            error: error.message
-        });
-    }
-};
-
 
 // This endpoint generates a full box score for a specific game, including player stats.
 exports.getGameBoxScore = async (req, res) => {
     try {
         const gameId = req.params.gameId;
 
-        const boxScore = await GameStatistics.aggregate([
+        const boxScore = await GameStats.aggregate([
             {
                 $match: { gameId: new mongoose.Types.ObjectId(gameId) }
             },
@@ -166,26 +171,44 @@ exports.getGameBoxScore = async (req, res) => {
                     playerName: "$player.fullName",
                     jerseyNumber: "$player.jerseyNumber",
                     position: "$player.position",
-                    minutesPlayed: 1,
-                    points: 1,
-                    fieldGoalsMade: 1,
-                    fieldGoalsAttempted: 1,
-                    threePointersMade: 1,
-                    threePointersAttempted: 1,
-                    freeThrowsMade: 1,
-                    freeThrowsAttempted: 1,
-                    offensiveRebounds: 1,
-                    defensiveRebounds: 1,
-                    assists: 1,
-                    steals: 1,
-                    blocks: 1,
-                    turnovers: 1,
-                    fouls: 1,
-                    plusMinus: 1,
-                    totalRebounds: { $add: ["$offensiveRebounds", "$defensiveRebounds"] },
-                    FGPercentage: { $cond: [{ $eq: ["$fieldGoalsAttempted", 0] }, 0, { $multiply: [{ $divide: ["$fieldGoalsMade", "$fieldGoalsAttempted"] }, 100] }] },
-                    threePointPercentage: { $cond: [{ $eq: ["$threePointersAttempted", 0] }, 0, { $multiply: [{ $divide: ["$threePointersMade", "$threePointersAttempted"] }, 100] }] },
-                    freeThrowPercentage: { $cond: [{ $eq: ["$freeThrowsAttempted", 0] }, 0, { $multiply: [{ $divide: ["$freeThrowsMade", "$freeThrowsAttempted"] }, 100] }] }
+                    minutesPlayed: "$totals.minutesPlayed",
+                    points: "$totals.points",
+                    fieldGoalsMade: "$totals.fieldGoalsMade",
+                    fieldGoalsAttempted: "$totals.fieldGoalsAttempted",
+                    threePointersMade: "$totals.threePointersMade",
+                    threePointersAttempted: "$totals.threePointersAttempted",
+                    freeThrowsMade: "$totals.freeThrowsMade",
+                    freeThrowsAttempted: "$totals.freeThrowsAttempted",
+                    offensiveRebounds: "$totals.offensiveRebounds",
+                    defensiveRebounds: "$totals.defensiveRebounds",
+                    assists: "$totals.assists",
+                    steals: "$totals.steals",
+                    blocks: "$totals.blocks",
+                    turnovers: "$totals.turnovers",
+                    fouls: "$totals.fouls",
+                    plusMinus: "$totals.plusMinus",
+                    totalRebounds: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] },
+                    FGPercentage: {
+                        $cond: [
+                            { $eq: ["$totals.fieldGoalsAttempted", 0] },
+                            0,
+                            { $multiply: [{ $divide: ["$totals.fieldGoalsMade", "$totals.fieldGoalsAttempted"] }, 100] }
+                        ]
+                    },
+                    threePointPercentage: {
+                        $cond: [
+                            { $eq: ["$totals.threePointersAttempted", 0] },
+                            0,
+                            { $multiply: [{ $divide: ["$totals.threePointersMade", "$totals.threePointersAttempted"] }, 100] }
+                        ]
+                    },
+                    freeThrowPercentage: {
+                        $cond: [
+                            { $eq: ["$totals.freeThrowsAttempted", 0] },
+                            0,
+                            { $multiply: [{ $divide: ["$totals.freeThrowsMade", "$totals.freeThrowsAttempted"] }, 100] }
+                        ]
+                    }
                 }
             },
             { $sort: { jerseyNumber: 1 } }
@@ -237,47 +260,64 @@ exports.getAggregatedStatsByPlayerId = async (req, res) => {
                 $group: {
                     _id: "$playerId",
                     totalGames: { $sum: 1 },
-                    totalPoints: { $sum: "$points" },
-                    averagePoints: { $avg: "$points" },
-                    totalRebounds: { $sum: { $add: ["$offensiveRebounds", "$defensiveRebounds"] } },
-                    averageRebounds: { $avg: { $add: ["$offensiveRebounds", "$defensiveRebounds"] } },
+                    totalPoints: { $sum: "$totals.points" },
+                    averagePoints: { $avg: "$totals.points" },
+                    totalRebounds: { $sum: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
+                    averageRebounds: { $avg: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
 
-                    totalOffensiveRebounds: { $sum: "$offensiveRebounds" },
-                    averageOffensiveRebounds: { $avg: "$offensiveRebounds" },
-                    totalDefensiveRebounds: { $sum: "$defensiveRebounds" },
-                    averageDefensiveRebounds: { $avg: "$defensiveRebounds" },
+                    totalOffensiveRebounds: { $sum: "$totals.offensiveRebounds" },
+                    averageOffensiveRebounds: { $avg: "$totals.offensiveRebounds" },
+                    totalDefensiveRebounds: { $sum: "$totals.defensiveRebounds" },
+                    averageDefensiveRebounds: { $avg: "$totals.defensiveRebounds" },
 
-                    averageMinutesPlayed: { $avg: "$minutesPlayed" },
+                    averageMinutesPlayed: { $avg: "$totals.minutesPlayed" },
 
-                    averageFTM: { $avg: "$freeThrowsMade" },
-                    averageFTA: { $avg: "$freeThrowsAttempted" },
-                    totalFTM: { $sum: "$freeThrowsMade" },
-                    totalFTA: { $sum: "$freeThrowsAttempted" },
-                    FTPercentage: { $cond: [{ $eq: ["$freeThrowsAttempted", 0] }, 0, { $multiply: [{ $divide: ["$freeThrowsMade", "$freeThrowsAttempted"] }, 100] }] },
+                    averageFTM: { $avg: "$totals.freeThrowsMade" },
+                    averageFTA: { $avg: "$totals.freeThrowsAttempted" },
+                    totalFTM: { $sum: "$totals.freeThrowsMade" },
+                    totalFTA: { $sum: "$totals.freeThrowsAttempted" },
+                    FTPercentage: { 
+                        $cond: [
+                            { $eq: ["$totals.freeThrowsAttempted", 0] }, 
+                            0, 
+                            { $multiply: [{ $divide: ["$totals.freeThrowsMade", "$totals.freeThrowsAttempted"] }, 100] }
+                        ] 
+                    },
 
-                    averageFGM: { $avg: "$fieldGoalsMade" },
-                    averageFGA: { $avg: "$fieldGoalsAttempted" },
-                    totalFGM: { $sum: "$fieldGoalsMade" },
-                    totalFGA: { $sum: "$fieldGoalsAttempted" },
-                    FGPercentage: { $cond: [{ $eq: ["$fieldGoalsAttempted", 0] }, 0, { $multiply: [{ $divide: ["$fieldGoalsMade", "$fieldGoalsAttempted"] }, 100] }] },
+                    averageFGM: { $avg: "$totals.fieldGoalsMade" },
+                    averageFGA: { $avg: "$totals.fieldGoalsAttempted" },
+                    totalFGM: { $sum: "$totals.fieldGoalsMade" },
+                    totalFGA: { $sum: "$totals.fieldGoalsAttempted" },
+                    FGPercentage: { 
+                        $cond: [
+                            { $eq: ["$totals.fieldGoalsAttempted", 0] }, 
+                            0, 
+                            { $multiply: [{ $divide: ["$totals.fieldGoalsMade", "$totals.fieldGoalsAttempted"] }, 100] }
+                        ] 
+                    },
 
-                    averge3PM: { $avg: "$threePointersMade" },
-                    average3PA: { $avg: "$threePointersAttempted" },
-                    total3PA: { $avg: "$threePointersAttempted" },
-                    total3PM: { $avg: "$threePointersMade" },
-                    threePointPercentage: { $cond: [{ $eq: ["$threePointersAttempted", 0] }, 0, { $multiply: [{ $divide: ["$threePointersMade", "$threePointersAttempted"] }, 100] }] },
+                    average3PM: { $avg: "$totals.threePointersMade" },
+                    average3PA: { $avg: "$totals.threePointersAttempted" },
+                    total3PM: { $sum: "$totals.threePointersMade" },
+                    total3PA: { $sum: "$totals.threePointersAttempted" },
+                    threePointPercentage: { 
+                        $cond: [
+                            { $eq: ["$totals.threePointersAttempted", 0] }, 
+                            0, 
+                            { $multiply: [{ $divide: ["$totals.threePointersMade", "$totals.threePointersAttempted"] }, 100] }
+                        ] 
+                    },
 
-                    totalAssists: { $sum: "$assists" },
-                    averageAssists: { $avg: "$assists" },
-                    totalSteals: { $sum: "$steals" },
-                    averageSteals: { $avg: "$steals" },
-                    totalBlocks: { $sum: "$blocks" },
-                    averageBlocks: { $avg: "$blocks" },
-                    totalTurnovers: { $sum: "$turnovers" },
-                    averageTurnovers: { $avg: "$turnovers" },
-                    averageFouls: { $avg: "$fouls" },
-                    averagePlusMinus: { $avg: "$plusMinus" },
-                    // Add more aggregated fields as needed
+                    totalAssists: { $sum: "$totals.assists" },
+                    averageAssists: { $avg: "$totals.assists" },
+                    totalSteals: { $sum: "$totals.steals" },
+                    averageSteals: { $avg: "$totals.steals" },
+                    totalBlocks: { $sum: "$totals.blocks" },
+                    averageBlocks: { $avg: "$totals.blocks" },
+                    totalTurnovers: { $sum: "$totals.turnovers" },
+                    averageTurnovers: { $avg: "$totals.turnovers" },
+                    averageFouls: { $avg: "$totals.fouls" },
+                    averagePlusMinus: { $avg: "$totals.plusMinus" }
                 }
             }
         ]);
@@ -306,27 +346,27 @@ exports.getAggregatedStatsByGameId = async (req, res) => {
             {
                 $group: {
                     _id: "$gameId",
-                    totalPoints: { $sum: "$points" },
-                    averagePoints: { $avg: "$points" },
-                    totalRebounds: { $sum: { $add: ["$offensiveRebounds", "$defensiveRebounds"] } },
-                    totalOffensiveRebounds: { $sum: "$offensiveRebounds" },
-                    totalDefensiveRebounds: { $sum: "$defensiveRebounds" },
-                    averageRebounds: { $avg: { $add: ["$offensiveRebounds", "$defensiveRebounds"] } },
-                    totalAssists: { $sum: "$assists" },
-                    averageAssists: { $avg: "$assists" },
-                    totalSteals: { $sum: "$steals" },
-                    averageSteals: { $avg: "$steals" },
-                    totalBlocks: { $sum: "$blocks" },
-                    averageBlocks: { $avg: "$blocks" },
-                    totalTurnovers: { $sum: "$turnovers" },
-                    totalFouls: { $sum: "$fouls" },
-                    totalFTMs: { $sum: "$freeThrowsMade" },
-                    totalFTAs: { $sum: "$freeThrowsAttempted" },
-                    total3PA: { $sum: "$threePointersAttempted" },
-                    total3PM: { $sum: "$threePointersMade" },
-                    totalFGAs: { $sum: "$fieldGoalsAttempted" },
-                    totalFGMs: { $sum: "$fieldGoalsMade" },
-                    averageMinutesPlayed: { $avg: "$minutesPlayed" },
+                    totalPoints: { $sum: "$totals.points" },
+                    averagePoints: { $avg: "$totals.points" },
+                    totalRebounds: { $sum: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
+                    totalOffensiveRebounds: { $sum: "$totals.offensiveRebounds" },
+                    totalDefensiveRebounds: { $sum: "$totals.defensiveRebounds" },
+                    averageRebounds: { $avg: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
+                    totalAssists: { $sum: "$totals.assists" },
+                    averageAssists: { $avg: "$totals.assists" },
+                    totalSteals: { $sum: "$totals.steals" },
+                    averageSteals: { $avg: "$totals.steals" },
+                    totalBlocks: { $sum: "$totals.blocks" },
+                    averageBlocks: { $avg: "$totals.blocks" },
+                    totalTurnovers: { $sum: "$totals.turnovers" },
+                    totalFouls: { $sum: "$totals.fouls" },
+                    totalFTMs: { $sum: "$totals.freeThrowsMade" },
+                    totalFTAs: { $sum: "$totals.freeThrowsAttempted" },
+                    total3PA: { $sum: "$totals.threePointersAttempted" },
+                    total3PM: { $sum: "$totals.threePointersMade" },
+                    totalFGAs: { $sum: "$totals.fieldGoalsAttempted" },
+                    totalFGMs: { $sum: "$totals.fieldGoalsMade" },
+                    averageMinutesPlayed: { $avg: "$totals.minutesPlayed" },
                     // Add more aggregated fields as needed
                 }
             }
@@ -366,20 +406,20 @@ exports.getAggregatedStatsBySeason = async (req, res) => {
             {
                 $group: {
                     _id: null,
-                    totalPoints: { $sum: "$points" },
-                    averagePoints: { $avg: "$points" },
-                    totalRebounds: { $sum: { $add: ["$offensiveRebounds", "$defensiveRebounds"] } },
-                    averageRebounds: { $avg: { $add: ["$offensiveRebounds", "$defensiveRebounds"] } },
-                    totalAssists: { $sum: "$assists" },
-                    averageAssists: { $avg: "$assists" },
-                    totalSteals: { $sum: "$steals" },
-                    averageSteals: { $avg: "$steals" },
-                    totalBlocks: { $sum: "$blocks" },
-                    averageBlocks: { $avg: "$blocks" },
-                    totalTurnovers: { $sum: "$turnovers" },
-                    averageTurnovers: { $avg: "$turnovers" },
-                    averageFouls: { $avg: "$fouls" },
-                    averagePlusMinus: { $avg: "$plusMinus" },
+                    totalPoints: { $sum: "$totals.points" },
+                    averagePoints: { $avg: "$totals.points" },
+                    totalRebounds: { $sum: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
+                    averageRebounds: { $avg: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
+                    totalAssists: { $sum: "$totals.assists" },
+                    averageAssists: { $avg: "$totals.assists" },
+                    totalSteals: { $sum: "$totals.steals" },
+                    averageSteals: { $avg: "$totals.steals" },
+                    totalBlocks: { $sum: "$totals.blocks" },
+                    averageBlocks: { $avg: "$totals.blocks" },
+                    totalTurnovers: { $sum: "$totals.turnovers" },
+                    averageTurnovers: { $avg: "$totals.turnovers" },
+                    averageFouls: { $avg: "$totals.fouls" },
+                    averagePlusMinus: { $avg: "$totals.plusMinus" },
                     totalGames: { $sum: 1 },
                 }
             }
@@ -398,7 +438,6 @@ exports.getAggregatedStatsBySeason = async (req, res) => {
         });
     }
 };
-
 
 
 // Get aggregated stats for a player in a specific tournament (requires additional fields in Game model to filter by tournament)
@@ -420,20 +459,20 @@ exports.getAggregatedStatsByPlayerIdAndTournament = async (req, res) => {
             {
                 $group: {
                     _id: "$playerId",
-                    totalPoints: { $sum: "$points" },
-                    averagePoints: { $avg: "$points" },
-                    totalRebounds: { $sum: { $add: ["$offensiveRebounds", "$defensiveRebounds"] } },
-                    averageRebounds: { $avg: { $add: ["$offensiveRebounds", "$defensiveRebounds"] } },
-                    totalAssists: { $sum: "$assists" },
-                    averageAssists: { $avg: "$assists" },
-                    totalSteals: { $sum: "$steals" },
-                    averageSteals: { $avg: "$steals" },
-                    totalBlocks: { $sum: "$blocks" },
-                    averageBlocks: { $avg: "$blocks" },
-                    totalTurnovers: { $sum: "$turnovers" },
-                    averageTurnovers: { $avg: "$turnovers" },
-                    averageFouls: { $avg: "$fouls" },
-                    averagePlusMinus: { $avg: "$plusMinus" },
+                    totalPoints: { $sum: "$totals.points" },
+                    averagePoints: { $avg: "$totals.points" },
+                    totalRebounds: { $sum: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
+                    averageRebounds: { $avg: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
+                    totalAssists: { $sum: "$totals.assists" },
+                    averageAssists: { $avg: "$totals.assists" },
+                    totalSteals: { $sum: "$totals.steals" },
+                    averageSteals: { $avg: "$totals.steals" },
+                    totalBlocks: { $sum: "$totals.blocks" },
+                    averageBlocks: { $avg: "$totals.blocks" },
+                    totalTurnovers: { $sum: "$totals.turnovers" },
+                    averageTurnovers: { $avg: "$totals.turnovers" },
+                    averageFouls: { $avg: "$totals.fouls" },
+                    averagePlusMinus: { $avg: "$totals.plusMinus" },
                     // Add more aggregated fields as needed
                 }
             }
@@ -481,20 +520,20 @@ exports.getAggregatedStatsByPlayerIdAndSeason = async (req, res) => {
             {
                 $group: {
                     _id: "$playerId",
-                    totalPoints: { $sum: "$points" },
-                    averagePoints: { $avg: "$points" },
-                    totalRebounds: { $sum: { $add: ["$offensiveRebounds", "$defensiveRebounds"] } },
-                    averageRebounds: { $avg: { $add: ["$offensiveRebounds", "$defensiveRebounds"] } },
-                    totalAssists: { $sum: "$assists" },
-                    averageAssists: { $avg: "$assists" },
-                    totalSteals: { $sum: "$steals" },
-                    averageSteals: { $avg: "$steals" },
-                    totalBlocks: { $sum: "$blocks" },
-                    averageBlocks: { $avg: "$blocks" },
-                    totalTurnovers: { $sum: "$turnovers" },
-                    averageTurnovers: { $avg: "$turnovers" },
-                    averageFouls: { $avg: "$fouls" },
-                    averagePlusMinus: { $avg: "$plusMinus" },
+                    totalPoints: { $sum: "$totals.points" },
+                    averagePoints: { $avg: "$totals.points" },
+                    totalRebounds: { $sum: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
+                    averageRebounds: { $avg: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
+                    totalAssists: { $sum: "$totals.assists" },
+                    averageAssists: { $avg: "$totals.assists" },
+                    totalSteals: { $sum: "$totals.steals" },
+                    averageSteals: { $avg: "$totals.steals" },
+                    totalBlocks: { $sum: "$totals.blocks" },
+                    averageBlocks: { $avg: "$totals.blocks" },
+                    totalTurnovers: { $sum: "$totals.turnovers" },
+                    averageTurnovers: { $avg: "$totals.turnovers" },
+                    averageFouls: { $avg: "$totals.fouls" },
+                    averagePlusMinus: { $avg: "$totals.plusMinus" },
                 }
             }
         ]);
@@ -513,12 +552,11 @@ exports.getAggregatedStatsByPlayerIdAndSeason = async (req, res) => {
     }
 };
 
-// Get top scorers in a specific season (requires additional fields in Game model to filter by season)
+
+// Get top scorers in a specific season
 exports.getTopScorersBySeason = async (req, res) => {
     try {
         const { season, limit = 10 } = req.params;
-
-        // Find all game IDs for the season
         const games = await Game.find({ season }, { _id: 1 });
         const gameIds = games.map(game => game._id);
 
@@ -530,13 +568,12 @@ exports.getTopScorersBySeason = async (req, res) => {
             });
         }
 
-        // Aggregate total points for each player in those games and sort by points
         const topScorers = await GameStats.aggregate([
             { $match: { gameId: { $in: gameIds } } },
             {
                 $group: {
                     _id: "$playerId",
-                    totalPoints: { $sum: "$points" },
+                    totalPoints: { $sum: "$totals.points" },
                     gamesPlayed: { $sum: 1 }
                 }
             },
@@ -579,15 +616,13 @@ exports.getTopScorersBySeason = async (req, res) => {
     }
 };
 
-
-// Get top rebounders in a specific season (requires additional fields in Game model to filter by season)
+// Get top rebounders in a specific season
 exports.getTopReboundersBySeason = async (req, res) => {
     try {
         const { season, limit = 10 } = req.params;
-
-        // Find all game IDs for the season
         const games = await Game.find({ season }, { _id: 1 });
         const gameIds = games.map(game => game._id);
+
         if (gameIds.length === 0) {
             return res.status(200).json({
                 success: true,
@@ -596,13 +631,12 @@ exports.getTopReboundersBySeason = async (req, res) => {
             });
         }
 
-        // Aggregate total rebounds for each player in those games and sort by rebounds
         const topRebounders = await GameStats.aggregate([
             { $match: { gameId: { $in: gameIds } } },
             {
                 $group: {
                     _id: "$playerId",
-                    totalRebounds: { $sum: { $add: ["$offensiveRebounds", "$defensiveRebounds"] } },
+                    totalRebounds: { $sum: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
                     gamesPlayed: { $sum: 1 }
                 }
             },
@@ -645,14 +679,13 @@ exports.getTopReboundersBySeason = async (req, res) => {
     }
 };
 
-
-// Get top assist leaders in a specific season (requires additional fields in Game model to filter by season)
+// Get top assist leaders in a specific season
 exports.getTopAssistLeadersBySeason = async (req, res) => {
     try {
         const { season, limit = 10 } = req.params;
-        // Find all game IDs for the season
         const games = await Game.find({ season }, { _id: 1 });
         const gameIds = games.map(game => game._id);
+
         if (gameIds.length === 0) {
             return res.status(200).json({
                 success: true,
@@ -661,13 +694,12 @@ exports.getTopAssistLeadersBySeason = async (req, res) => {
             });
         }
 
-        // Aggregate total assists for each player in those games and sort by assists
         const topAssistLeaders = await GameStats.aggregate([
             { $match: { gameId: { $in: gameIds } } },
             {
                 $group: {
                     _id: "$playerId",
-                    totalAssists: { $sum: "$assists" },
+                    totalAssists: { $sum: "$totals.assists" },
                     gamesPlayed: { $sum: 1 }
                 }
             },
@@ -711,7 +743,6 @@ exports.getTopAssistLeadersBySeason = async (req, res) => {
 };
 
 
-
 // Get player performance in a specific tournament (requires additional fields in Game model to filter by tournament)
 exports.getPlayerPerformanceByTournament = async (req, res) => {
     try {
@@ -731,14 +762,14 @@ exports.getPlayerPerformanceByTournament = async (req, res) => {
             {
                 $project: {
                     gameId: 1,
-                    points: 1,
-                    rebounds: { $add: ["$offensiveRebounds", "$defensiveRebounds"] },
-                    assists: 1,
-                    steals: 1,
-                    blocks: 1,
-                    turnovers: 1,
-                    fouls: 1,
-                    plusMinus: 1,
+                    points: "$totals.points",
+                    rebounds: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] },
+                    assists: "$totals.assists",
+                    steals: "$totals.steals",
+                    blocks: "$totals.blocks",
+                    turnovers: "$totals.turnovers",
+                    fouls: "$totals.fouls",
+                    plusMinus: "$totals.plusMinus",
                     gameDate: "$gameDetails.gameDate",
                     opponent: "$gameDetails.opponent",
                     result: "$gameDetails.result"
@@ -784,14 +815,14 @@ exports.getPlayerPerformanceBySeason = async (req, res) => {
             {
                 $project: {
                     gameId: 1,
-                    points: 1,
-                    rebounds: { $add: ["$offensiveRebounds", "$defensiveRebounds"] },
-                    assists: 1,
-                    steals: 1,
-                    blocks: 1,
-                    turnovers: 1,
-                    fouls: 1,
-                    plusMinus: 1
+                    points: "$totals.points",
+                    rebounds: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] },
+                    assists: "$totals.assists",
+                    steals: "$totals.steals",
+                    blocks: "$totals.blocks",
+                    turnovers: "$totals.turnovers",
+                    fouls: "$totals.fouls",
+                    plusMinus: "$totals.plusMinus"
                 }
             },
             {
@@ -834,8 +865,6 @@ exports.getPlayerPerformanceBySeason = async (req, res) => {
         });
     }
 };
-
-
 // Get player PER (Player Efficiency Rating) for a specific season (requires additional fields in Game model to filter by season)
 // Note: PER calculation is complex and typically requires league averages, so this is a simplified version for demonstration purposes.
 exports.getPlayerPERBySeason = async (req, res) => {
@@ -872,14 +901,14 @@ exports.getPlayerPERBySeason = async (req, res) => {
                     playerName: { $first: "$playerDetails.fullName" },
                     jerseyNumber: { $first: "$playerDetails.jerseyNumber" },
                     position: { $first: "$playerDetails.position" },
-                    totalPoints: { $sum: "$points" },
-                    totalRebounds: { $sum: { $add: ["$offensiveRebounds", "$defensiveRebounds"] } },
-                    totalAssists: { $sum: "$assists" },
-                    totalSteals: { $sum: "$steals" },
-                    totalBlocks: { $sum: "$blocks" },
-                    totalTurnovers: { $sum: "$turnovers" },
-                    totalFouls: { $sum: "$fouls" },
-                    totalMinutesPlayed: { $sum: "$minutesPlayed" },
+                    totalPoints: { $sum: "$totals.points" },
+                    totalRebounds: { $sum: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
+                    totalAssists: { $sum: "$totals.assists" },
+                    totalSteals: { $sum: "$totals.steals" },
+                    totalBlocks: { $sum: "$totals.blocks" },
+                    totalTurnovers: { $sum: "$totals.turnovers" },
+                    totalFouls: { $sum: "$totals.fouls" },
+                    totalMinutesPlayed: { $sum: "$totals.minutesPlayed" },
                     gamesPlayed: { $sum: 1 }
                 }
             }
@@ -938,14 +967,14 @@ exports.getPlayerPERByGameId = async (req, res) => {
                     playerName: "$playerDetails.fullName",
                     jerseyNumber: "$playerDetails.jerseyNumber",
                     position: "$playerDetails.position",
-                    points: 1,
-                    rebounds: { $add: ["$offensiveRebounds", "$defensiveRebounds"] },
-                    assists: 1,
-                    steals: 1,
-                    blocks: 1,
-                    turnovers: 1,
-                    fouls: 1,
-                    minutesPlayed: 1
+                    points: "$totals.points",
+                    rebounds: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] },
+                    assists: "$totals.assists",
+                    steals: "$totals.steals",
+                    blocks: "$totals.blocks",
+                    turnovers: "$totals.turnovers",
+                    fouls: "$totals.fouls",
+                    minutesPlayed: "$totals.minutesPlayed"
                 }
             }
         ]);
@@ -979,4 +1008,5 @@ exports.getPlayerPERByGameId = async (req, res) => {
         });
     }
 };
+
 

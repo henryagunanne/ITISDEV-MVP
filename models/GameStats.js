@@ -89,6 +89,15 @@ const gameStatsSchema = new mongoose.Schema({
         fouls: { type: Number, default: 0 },
 
         plusMinus: { type: Number, default: 0 }
+    },
+
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
     }
 
 }, { timestamps: true });
@@ -97,28 +106,32 @@ const gameStatsSchema = new mongoose.Schema({
 // Auto compute totals before saving
 gameStatsSchema.pre('save', function(next) {
 
+    // Gather all periods (quarters + overtimes)
     const periods = [
         this.periodStats.q1,
         this.periodStats.q2,
         this.periodStats.q3,
         this.periodStats.q4,
-        ...this.periodStats.overtimes
+        ...this.periodStats.overtimes    // Spread operator to include all overtime periods
     ];
 
-    const totals = {};
+    const totals = {};  // Initialize totals object
 
+    // Sum up stats across all periods
     periods.forEach(period => {
-
         for (let stat in period) {
             if (!totals[stat]) {
                 totals[stat] = 0;
             }
-            totals[stat] += period[stat] || 0;
+            totals[stat] += period[stat] || 0;  // Add current period stat to total, defaulting to 0 if undefined
         }
 
     });
 
+    // Cache totals for quick access (optional)
     this.totals = totals;
+
+    this.updatedAt = Date.now();    // Update timestamp
 
     next();
 });
