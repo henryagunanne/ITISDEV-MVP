@@ -1,0 +1,1095 @@
+const Game = require('../models/Game');
+const GameStats = require('../models/GameStats');
+const Player = require("../models/Player");
+
+
+// This endpoint generates a full box score for a specific game, including player stats.
+exports.getGameBoxScore = async (req, res) => {
+    try {
+        const gameId = req.params.gameId;
+
+        const boxScore = await GameStats.aggregate([
+            {
+                $match: { gameId: new mongoose.Types.ObjectId(gameId) }
+            },
+            {
+                $lookup: {
+                    from: "players",
+                    localField: "playerId",
+                    foreignField: "_id",
+                    as: "player"
+                }
+            },
+            { $unwind: "$player" },
+            {
+                $project: {
+                    _id: 0,
+                    playerName: "$player.fullName",
+                    jerseyNumber: "$player.jerseyNumber",
+                    position: "$player.position",
+                    minutesPlayed: "$totals.minutesPlayed",
+                    points: "$totals.points",
+                    fieldGoalsMade: "$totals.fieldGoalsMade",
+                    fieldGoalsAttempted: "$totals.fieldGoalsAttempted",
+                    threePointersMade: "$totals.threePointersMade",
+                    threePointersAttempted: "$totals.threePointersAttempted",
+                    freeThrowsMade: "$totals.freeThrowsMade",
+                    freeThrowsAttempted: "$totals.freeThrowsAttempted",
+                    offensiveRebounds: "$totals.offensiveRebounds",
+                    defensiveRebounds: "$totals.defensiveRebounds",
+                    assists: "$totals.assists",
+                    steals: "$totals.steals",
+                    blocks: "$totals.blocks",
+                    turnovers: "$totals.turnovers",
+                    fouls: "$totals.fouls",
+                    plusMinus: "$totals.plusMinus",
+                    totalRebounds: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] },
+                    FGPercentage: {
+                        $cond: [
+                            { $eq: ["$totals.fieldGoalsAttempted", 0] },
+                            0,
+                            { $multiply: [{ $divide: ["$totals.fieldGoalsMade", "$totals.fieldGoalsAttempted"] }, 100] }
+                        ]
+                    },
+                    threePointPercentage: {
+                        $cond: [
+                            { $eq: ["$totals.threePointersAttempted", 0] },
+                            0,
+                            { $multiply: [{ $divide: ["$totals.threePointersMade", "$totals.threePointersAttempted"] }, 100] }
+                        ]
+                    },
+                    freeThrowPercentage: {
+                        $cond: [
+                            { $eq: ["$totals.freeThrowsAttempted", 0] },
+                            0,
+                            { $multiply: [{ $divide: ["$totals.freeThrowsMade", "$totals.freeThrowsAttempted"] }, 100] }
+                        ]
+                    }
+                }
+            },
+            { $sort: { jerseyNumber: 1 } }
+        ]);
+
+        res.status(200).json({
+            success: true,
+            message: "Box score generated successfully.",
+            gameId: gameId,
+            data: boxScore
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error generating box score",
+            error: error.message
+        });
+    }
+};
+
+
+// Get aggregated stats for a player (career totals, averages, etc.)
+exports.getAggregatedStatsByPlayerId = async (req, res) => {
+    try {
+        const { playerId } = req.params;
+
+        const aggregatedStats = await GameStats.aggregate([
+            { $match: { playerId: mongoose.Types.ObjectId(playerId) } },
+            {
+                $group: {
+                    _id: "$playerId",
+                    totalGames: { $sum: 1 },
+                    totalPoints: { $sum: "$totals.points" },
+                    averagePoints: { $avg: "$totals.points" },
+                    totalRebounds: { $sum: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
+                    averageRebounds: { $avg: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
+
+                    totalOffensiveRebounds: { $sum: "$totals.offensiveRebounds" },
+                    averageOffensiveRebounds: { $avg: "$totals.offensiveRebounds" },
+                    totalDefensiveRebounds: { $sum: "$totals.defensiveRebounds" },
+                    averageDefensiveRebounds: { $avg: "$totals.defensiveRebounds" },
+
+                    averageMinutesPlayed: { $avg: "$totals.minutesPlayed" },
+
+                    averageFTM: { $avg: "$totals.freeThrowsMade" },
+                    averageFTA: { $avg: "$totals.freeThrowsAttempted" },
+                    totalFTM: { $sum: "$totals.freeThrowsMade" },
+                    totalFTA: { $sum: "$totals.freeThrowsAttempted" },
+                    FTPercentage: { 
+                        $cond: [
+                            { $eq: ["$totals.freeThrowsAttempted", 0] }, 
+                            0, 
+                            { $multiply: [{ $divide: ["$totals.freeThrowsMade", "$totals.freeThrowsAttempted"] }, 100] }
+                        ] 
+                    },
+
+                    averageFGM: { $avg: "$totals.fieldGoalsMade" },
+                    averageFGA: { $avg: "$totals.fieldGoalsAttempted" },
+                    totalFGM: { $sum: "$totals.fieldGoalsMade" },
+                    totalFGA: { $sum: "$totals.fieldGoalsAttempted" },
+                    FGPercentage: { 
+                        $cond: [
+                            { $eq: ["$totals.fieldGoalsAttempted", 0] }, 
+                            0, 
+                            { $multiply: [{ $divide: ["$totals.fieldGoalsMade", "$totals.fieldGoalsAttempted"] }, 100] }
+                        ] 
+                    },
+
+                    average3PM: { $avg: "$totals.threePointersMade" },
+                    average3PA: { $avg: "$totals.threePointersAttempted" },
+                    total3PM: { $sum: "$totals.threePointersMade" },
+                    total3PA: { $sum: "$totals.threePointersAttempted" },
+                    threePointPercentage: { 
+                        $cond: [
+                            { $eq: ["$totals.threePointersAttempted", 0] }, 
+                            0, 
+                            { $multiply: [{ $divide: ["$totals.threePointersMade", "$totals.threePointersAttempted"] }, 100] }
+                        ] 
+                    },
+
+                    totalAssists: { $sum: "$totals.assists" },
+                    averageAssists: { $avg: "$totals.assists" },
+                    totalSteals: { $sum: "$totals.steals" },
+                    averageSteals: { $avg: "$totals.steals" },
+                    totalBlocks: { $sum: "$totals.blocks" },
+                    averageBlocks: { $avg: "$totals.blocks" },
+                    totalTurnovers: { $sum: "$totals.turnovers" },
+                    averageTurnovers: { $avg: "$totals.turnovers" },
+                    averageFouls: { $avg: "$totals.fouls" },
+                    averagePlusMinus: { $avg: "$totals.plusMinus" }
+                }
+            }
+        ]);
+
+        res.status(200).json({
+            success: true,
+            message: "Aggregated stats retrieved successfully.",
+            data: aggregatedStats[0] || {}
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error retrieving aggregated stats.",
+            error: error.message
+        });
+    }
+};
+
+// Get aggregated stats for a game (team totals, averages, etc.)
+exports.getAggregatedStatsByGameId = async (req, res) => {
+    try {
+        const { gameId } = req.params;
+
+        const aggregatedStats = await GameStats.aggregate([
+            { $match: { gameId: mongoose.Types.ObjectId(gameId) } },
+            {
+                $group: {
+                    _id: "$gameId",
+                    totalPoints: { $sum: "$totals.points" },
+                    averagePoints: { $avg: "$totals.points" },
+                    totalRebounds: { $sum: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
+                    totalOffensiveRebounds: { $sum: "$totals.offensiveRebounds" },
+                    totalDefensiveRebounds: { $sum: "$totals.defensiveRebounds" },
+                    averageRebounds: { $avg: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
+                    totalAssists: { $sum: "$totals.assists" },
+                    averageAssists: { $avg: "$totals.assists" },
+                    totalSteals: { $sum: "$totals.steals" },
+                    averageSteals: { $avg: "$totals.steals" },
+                    totalBlocks: { $sum: "$totals.blocks" },
+                    averageBlocks: { $avg: "$totals.blocks" },
+                    totalTurnovers: { $sum: "$totals.turnovers" },
+                    totalFouls: { $sum: "$totals.fouls" },
+                    totalFTMs: { $sum: "$totals.freeThrowsMade" },
+                    totalFTAs: { $sum: "$totals.freeThrowsAttempted" },
+                    total3PA: { $sum: "$totals.threePointersAttempted" },
+                    total3PM: { $sum: "$totals.threePointersMade" },
+                    totalFGAs: { $sum: "$totals.fieldGoalsAttempted" },
+                    totalFGMs: { $sum: "$totals.fieldGoalsMade" },
+                    averageMinutesPlayed: { $avg: "$totals.minutesPlayed" },
+                    // Add more aggregated fields as needed
+                }
+            }
+        ]);
+
+        res.status(200).json({
+            success: true,
+            message: "Aggregated stats retrieved successfully.",
+            data: aggregatedStats[0] || {}
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error retrieving aggregated stats.",
+            error: error.message
+        });
+    }
+};
+
+
+// Get aggregated stats for the entire season (requires additional fields in Game model to filter by season)
+exports.getAggregatedStatsBySeason = async (req, res) => {
+    try {
+        const { season } = req.params;
+        // Find all game IDs for the season
+        const games = await Game.find({ season }, { _id: 1 });
+        const gameIds = games.map(game => game._id);
+        if (gameIds.length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: "No games found for this season.",
+                data: {}
+            });
+        }
+        const aggregatedStats = await GameStats.aggregate([
+            { $match: { gameId: { $in: gameIds } } },
+            {
+                $group: {
+                    _id: null,
+                    totalPoints: { $sum: "$totals.points" },
+                    averagePoints: { $avg: "$totals.points" },
+                    totalRebounds: { $sum: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
+                    averageRebounds: { $avg: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
+                    totalAssists: { $sum: "$totals.assists" },
+                    averageAssists: { $avg: "$totals.assists" },
+                    totalSteals: { $sum: "$totals.steals" },
+                    averageSteals: { $avg: "$totals.steals" },
+                    totalBlocks: { $sum: "$totals.blocks" },
+                    averageBlocks: { $avg: "$totals.blocks" },
+                    totalTurnovers: { $sum: "$totals.turnovers" },
+                    averageTurnovers: { $avg: "$totals.turnovers" },
+                    averageFouls: { $avg: "$totals.fouls" },
+                    averagePlusMinus: { $avg: "$totals.plusMinus" },
+                    totalGames: { $sum: 1 },
+                }
+            }
+        ]);
+
+        res.status(200).json({
+            success: true,
+            message: "Aggregated stats for season retrieved successfully.",
+            data: aggregatedStats[0] || {}
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error retrieving aggregated stats for season.",
+            error: error.message
+        });
+    }
+};
+
+
+// Get aggregated stats for a player in a specific tournament (requires additional fields in Game model to filter by tournament)
+exports.getAggregatedStatsByPlayerIdAndTournament = async (req, res) => {
+    try {
+        const { playerId, tournamentId } = req.params;
+
+        const aggregatedStats = await GameStats.aggregate([
+            {
+                $lookup: {
+                    from: "games",
+                    localField: "gameId",
+                    foreignField: "_id",
+                    as: "gameDetails"
+                }
+            },
+            { $unwind: "$gameDetails" },
+            { $match: { playerId: mongoose.Types.ObjectId(playerId), "gameDetails.tournament":  mongoose.Types.ObjectId(tournamentId) } },
+            {
+                $group: {
+                    _id: "$playerId",
+                    totalPoints: { $sum: "$totals.points" },
+                    averagePoints: { $avg: "$totals.points" },
+                    totalRebounds: { $sum: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
+                    averageRebounds: { $avg: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
+                    totalAssists: { $sum: "$totals.assists" },
+                    averageAssists: { $avg: "$totals.assists" },
+                    totalSteals: { $sum: "$totals.steals" },
+                    averageSteals: { $avg: "$totals.steals" },
+                    totalBlocks: { $sum: "$totals.blocks" },
+                    averageBlocks: { $avg: "$totals.blocks" },
+                    totalTurnovers: { $sum: "$totals.turnovers" },
+                    averageTurnovers: { $avg: "$totals.turnovers" },
+                    averageFouls: { $avg: "$totals.fouls" },
+                    averagePlusMinus: { $avg: "$totals.plusMinus" },
+                    // Add more aggregated fields as needed
+                }
+            }
+        ]);
+
+        res.status(200).json({
+            success: true,
+            message: "Aggregated stats for tournament retrieved successfully.",
+            data: aggregatedStats[0] || {}
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error retrieving aggregated stats for tournament.",
+            error: error.message
+        });
+    }
+};
+
+// Get aggregated stats for a player in a specific season (requires additional fields in Game model to filter by season)
+exports.getAggregatedStatsByPlayerIdAndSeason = async (req, res) => {
+    try {
+        const { playerId, season } = req.params;
+
+        // Find all game IDs for the season
+        const games = await Game.find({ season }, { _id: 1 });
+        const gameIds = games.map(game => game._id);
+
+        if (gameIds.length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: "No games found for this season.",
+                data: {}
+            });
+        }
+
+        // Aggregate stats for the player in those games
+        const aggregatedStats = await GameStats.aggregate([
+            {
+                $match: {
+                    playerId: mongoose.Types.ObjectId(playerId),
+                    gameId: { $in: gameIds }
+                }
+            },
+            {
+                $group: {
+                    _id: "$playerId",
+                    totalPoints: { $sum: "$totals.points" },
+                    averagePoints: { $avg: "$totals.points" },
+                    totalRebounds: { $sum: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
+                    averageRebounds: { $avg: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
+                    totalAssists: { $sum: "$totals.assists" },
+                    averageAssists: { $avg: "$totals.assists" },
+                    totalSteals: { $sum: "$totals.steals" },
+                    averageSteals: { $avg: "$totals.steals" },
+                    totalBlocks: { $sum: "$totals.blocks" },
+                    averageBlocks: { $avg: "$totals.blocks" },
+                    totalTurnovers: { $sum: "$totals.turnovers" },
+                    averageTurnovers: { $avg: "$totals.turnovers" },
+                    averageFouls: { $avg: "$totals.fouls" },
+                    averagePlusMinus: { $avg: "$totals.plusMinus" },
+                }
+            }
+        ]);
+
+        res.status(200).json({
+            success: true,
+            message: "Aggregated stats for season retrieved successfully.",
+            data: aggregatedStats[0] || {}
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error retrieving aggregated stats for season.",
+            error: error.message
+        });
+    }
+};
+
+
+// Get top scorers in a specific season
+exports.getTopScorersBySeason = async (req, res) => {
+    try {
+        const { season, limit = 10 } = req.params;
+        const games = await Game.find({ season }, { _id: 1 });
+        const gameIds = games.map(game => game._id);
+
+        if (gameIds.length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: "No games found for this season.",
+                data: []
+            });
+        }
+
+        const topScorers = await GameStats.aggregate([
+            { $match: { gameId: { $in: gameIds } } },
+            {
+                $group: {
+                    _id: "$playerId",
+                    totalPoints: { $sum: "$totals.points" },
+                    gamesPlayed: { $sum: 1 }
+                }
+            },
+            {
+                $lookup: {
+                    from: "players",
+                    localField: "_id",
+                    foreignField: "_id",
+                    as: "playerDetails"
+                }
+            },
+            { $unwind: "$playerDetails" },
+            {
+                $project: {
+                    _id: 0,
+                    playerId: "$_id",
+                    fullName: "$playerDetails.fullName",
+                    jerseyNumber: "$playerDetails.jerseyNumber",
+                    position: "$playerDetails.position",
+                    totalPoints: 1,
+                    gamesPlayed: 1,
+                    PointsPerGame: { $cond: [{ $eq: ["$gamesPlayed", 0] }, 0, { $divide: ["$totalPoints", "$gamesPlayed"] }] }
+                }
+            },
+            { $sort: { PointsPerGame: -1 } },
+            { $limit: parseInt(limit) },
+        ]);
+
+        res.status(200).json({
+            success: true,
+            message: "Top scorers retrieved successfully.",
+            data: topScorers
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error retrieving top scorers.",
+            error: error.message
+        });
+    }
+};
+
+// Get top rebounders in a specific season
+exports.getTopReboundersBySeason = async (req, res) => {
+    try {
+        const { season, limit = 10 } = req.params;
+        const games = await Game.find({ season }, { _id: 1 });
+        const gameIds = games.map(game => game._id);
+
+        if (gameIds.length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: "No games found for this season.",
+                data: []
+            });
+        }
+
+        const topRebounders = await GameStats.aggregate([
+            { $match: { gameId: { $in: gameIds } } },
+            {
+                $group: {
+                    _id: "$playerId",
+                    totalRebounds: { $sum: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
+                    gamesPlayed: { $sum: 1 }
+                }
+            },
+            {
+                $lookup: {
+                    from: "players",
+                    localField: "_id",
+                    foreignField: "_id",
+                    as: "playerDetails"
+                }
+            },
+            { $unwind: "$playerDetails" },
+            {
+                $project: {
+                    _id: 0,
+                    playerId: "$_id",
+                    fullName: "$playerDetails.fullName",
+                    jerseyNumber: "$playerDetails.jerseyNumber",
+                    position: "$playerDetails.position",
+                    totalRebounds: 1,
+                    gamesPlayed: 1,
+                    ReboundsPerGame: { $cond: [{ $eq: ["$gamesPlayed", 0] }, 0, { $divide: ["$totalRebounds", "$gamesPlayed"] }] }
+                }
+            },
+            { $sort: { ReboundsPerGame: -1 } },
+            { $limit: parseInt(limit) },
+        ]);
+
+        res.status(200).json({
+            success: true,
+            message: "Top rebounders retrieved successfully.",
+            data: topRebounders
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error retrieving top rebounders.",
+            error: error.message
+        });
+    }
+};
+
+// Get top assist leaders in a specific season
+exports.getTopAssistLeadersBySeason = async (req, res) => {
+    try {
+        const { season, limit = 10 } = req.params;
+        const games = await Game.find({ season }, { _id: 1 });
+        const gameIds = games.map(game => game._id);
+
+        if (gameIds.length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: "No games found for this season.",
+                data: []
+            });
+        }
+
+        const topAssistLeaders = await GameStats.aggregate([
+            { $match: { gameId: { $in: gameIds } } },
+            {
+                $group: {
+                    _id: "$playerId",
+                    totalAssists: { $sum: "$totals.assists" },
+                    gamesPlayed: { $sum: 1 }
+                }
+            },
+            {
+                $lookup: {
+                    from: "players",
+                    localField: "_id",
+                    foreignField: "_id",
+                    as: "playerDetails"
+                }
+            },
+            { $unwind: "$playerDetails" },
+            {
+                $project: {
+                    _id: 0,
+                    playerId: "$_id",
+                    fullName: "$playerDetails.fullName",
+                    jerseyNumber: "$playerDetails.jerseyNumber",
+                    position: "$playerDetails.position",
+                    totalAssists: 1,
+                    gamesPlayed: 1,
+                    AssistsPerGame: { $cond: [{ $eq: ["$gamesPlayed", 0] }, 0, { $divide: ["$totalAssists", "$gamesPlayed"] }] }
+                }
+            },
+            { $sort: { AssistsPerGame: -1 } },
+            { $limit: parseInt(limit) },
+        ]);
+
+        res.status(200).json({
+            success: true,
+            message: "Top assist leaders retrieved successfully.",
+            data: topAssistLeaders
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error retrieving top assist leaders.",
+            error: error.message
+        });
+    }
+};
+
+
+// Get player performance in a specific tournament (requires additional fields in Game model to filter by tournament)
+exports.getPlayerPerformanceByTournament = async (req, res) => {
+    try {
+        const { playerId, tournamentId } = req.params;
+
+        const performanceStats = await GameStats.aggregate([
+            {
+                $lookup: {
+                    from: "games",
+                    localField: "gameId",
+                    foreignField: "_id",
+                    as: "gameDetails"
+                }
+            },
+            { $unwind: "$gameDetails" },
+            { $match: { playerId: mongoose.Types.ObjectId(playerId), "gameDetails.tournament": mongoose.Types.ObjectId(tournamentId) } },
+            {
+                $project: {
+                    gameId: 1,
+                    points: "$totals.points",
+                    rebounds: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] },
+                    assists: "$totals.assists",
+                    steals: "$totals.steals",
+                    blocks: "$totals.blocks",
+                    turnovers: "$totals.turnovers",
+                    fouls: "$totals.fouls",
+                    plusMinus: "$totals.plusMinus",
+                    gameDate: "$gameDetails.gameDate",
+                    opponent: "$gameDetails.opponent",
+                    result: "$gameDetails.result"
+                }
+            },
+            { $sort: { gameDate: -1 } }
+        ]);
+
+        res.status(200).json({
+            success: true,
+            message: "Player performance for tournament retrieved successfully.",
+            data: performanceStats
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error retrieving player performance for tournament.",
+            error: error.message
+        });
+    }
+};
+
+
+// Get player performance in a specific season (requires additional fields in Game model to filter by season)
+exports.getPlayerPerformanceBySeason = async (req, res) => {
+    try {
+        const { playerId, season } = req.params;
+
+        // Find all game IDs for the season
+        const games = await Game.find({ season }, { _id: 1 });
+        const gameIds = games.map(game => game._id);
+
+        if (gameIds.length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: "No games found for this season.",
+                data: []
+            });
+        }
+
+        const performanceStats = await GameStats.aggregate([
+            { $match: { playerId: mongoose.Types.ObjectId(playerId), gameId: { $in: gameIds } } },
+            {
+                $project: {
+                    gameId: 1,
+                    points: "$totals.points",
+                    rebounds: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] },
+                    assists: "$totals.assists",
+                    steals: "$totals.steals",
+                    blocks: "$totals.blocks",
+                    turnovers: "$totals.turnovers",
+                    fouls: "$totals.fouls",
+                    plusMinus: "$totals.plusMinus"
+                }
+            },
+            {
+                $lookup: {
+                    from: "games",
+                    localField: "gameId",
+                    foreignField: "_id",
+                    as: "gameDetails"
+                }
+            },
+            { $unwind: "$gameDetails" },
+            {
+                $project: {
+                    points: 1,
+                    rebounds: 1,
+                    assists: 1,
+                    steals: 1,
+                    blocks: 1,
+                    turnovers: 1,
+                    fouls: 1,
+                    plusMinus: 1,
+                    gameDate: "$gameDetails.gameDate",
+                    opponent: "$gameDetails.opponent",
+                    result: "$gameDetails.result"
+                }
+            },
+            { $sort: { gameDate: -1 } }
+        ]);
+
+        res.status(200).json({
+            success: true,
+            message: "Player performance for season retrieved successfully.",
+            data: performanceStats
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error retrieving player performance for season.",
+            error: error.message
+        });
+    }
+};
+// Get player PER (Player Efficiency Rating) for a specific season (requires additional fields in Game model to filter by season)
+// Note: PER calculation is complex and typically requires league averages, so this is a simplified version for demonstration purposes.
+exports.getPlayerPERBySeason = async (req, res) => {
+    try {
+        const { playerId, season } = req.params;
+
+        // Find all game IDs for the season
+        const games = await Game.find({ season }, { _id: 1 });
+        const gameIds = games.map(game => game._id);
+
+        if (gameIds.length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: "No games found for this season.",
+                data: {}
+            });
+        }
+
+        // Aggregate stats needed for PER calculation
+        const stats = await GameStats.aggregate([
+            { $match: { playerId: mongoose.Types.ObjectId(playerId), gameId: { $in: gameIds } } },
+            {
+                $lookup: {
+                    from: "players",
+                    localField: "playerId",
+                    foreignField: "_id",
+                    as: "playerDetails"
+                }
+            },
+            { $unwind: "$playerDetails" },
+            {
+                $group: {
+                    _id: "$playerId",
+                    playerName: { $first: "$playerDetails.fullName" },
+                    jerseyNumber: { $first: "$playerDetails.jerseyNumber" },
+                    position: { $first: "$playerDetails.position" },
+                    totalPoints: { $sum: "$totals.points" },
+                    totalRebounds: { $sum: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
+                    totalAssists: { $sum: "$totals.assists" },
+                    totalSteals: { $sum: "$totals.steals" },
+                    totalBlocks: { $sum: "$totals.blocks" },
+                    totalTurnovers: { $sum: "$totals.turnovers" },
+                    totalFouls: { $sum: "$totals.fouls" },
+                    totalMinutesPlayed: { $sum: "$totals.minutesPlayed" },
+                    gamesPlayed: { $sum: 1 }
+                }
+            }
+        ]);
+
+        if (stats.length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: "No stats found for this player in this season.",
+                data: {}
+            });
+        }
+
+        const playerStats = stats[0];
+
+        // Simplified PER calculation (not using league averages or pace adjustment)
+        const PER = ((playerStats.totalPoints + playerStats.totalRebounds + playerStats.totalAssists + playerStats.totalSteals + playerStats.totalBlocks) - (playerStats.totalTurnovers + playerStats.totalFouls)) / playerStats.gamesPlayed;
+
+        res.status(200).json({
+            success: true,
+            message: "Player PER for season retrieved successfully.",
+            data: {
+                PER,
+                ...playerStats
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error retrieving player PER for season.",
+            error: error.message
+        });
+    }
+};
+
+
+// Get player PER (Player Efficiency Rating) for a game (requires additional fields in Game model to filter by game)
+exports.getPlayerPERByGameId = async (req, res) => {
+    try {
+        const { playerId, gameId } = req.params;
+
+        // Aggregate stats needed for PER calculation
+        const stats = await GameStats.aggregate([
+            { $match: { playerId: mongoose.Types.ObjectId(playerId), gameId: mongoose.Types.ObjectId(gameId) } },
+            {
+                $lookup: {
+                    from: "players",
+                    localField: "playerId",
+                    foreignField: "_id",
+                    as: "playerDetails"
+                }
+            },
+            { $unwind: "$playerDetails" },
+            {
+                $project: {
+                    playerName: "$playerDetails.fullName",
+                    jerseyNumber: "$playerDetails.jerseyNumber",
+                    position: "$playerDetails.position",
+                    points: "$totals.points",
+                    rebounds: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] },
+                    assists: "$totals.assists",
+                    steals: "$totals.steals",
+                    blocks: "$totals.blocks",
+                    turnovers: "$totals.turnovers",
+                    fouls: "$totals.fouls",
+                    minutesPlayed: "$totals.minutesPlayed"
+                }
+            }
+        ]);
+
+        if (stats.length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: "No stats found for this player in this game.",
+                data: {}
+            });
+        }
+
+        const playerStats = stats[0];
+
+        // Simplified PER calculation (not using league averages or pace adjustment)
+        const PER = ((playerStats.points + playerStats.rebounds + playerStats.assists + playerStats.steals + playerStats.blocks) - (playerStats.turnovers + playerStats.fouls)) / (playerStats.minutesPlayed / 48); // Assuming 48 minutes per game
+
+        res.status(200).json({
+            success: true,
+            message: "Player PER for game retrieved successfully.",
+            data: {
+                PER,
+                ...playerStats
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error retrieving player PER for game.",
+            error: error.message
+        });
+    }
+};
+
+// Get player performance in a specific quarter
+exports.getPlayerPerformanceByQuarter = async (req, res) => {
+    try {
+        const { playerId, gameId, quarter } = req.params;   // front-end should send quarter as q1, q2, q3, q4 or overtimes**
+
+        const performanceStats = await GameStats.aggregate([
+            { $match: { playerId: mongoose.Types.ObjectId(playerId), gameId: mongoose.Types.ObjectId(gameId) } },
+            {
+                $project: {
+                    points: `$periodStats.${quarter}.points`,
+                    rebounds: { $add: [`$periodStats.${quarter}.offensiveRebounds`, `$periodStats.${quarter}.defensiveRebounds`] },
+                    assists: `$periodStats.${quarter}.assists`,
+                    steals: `$periodStats.${quarter}.steals`,
+                    blocks: `$periodStats.${quarter}.blocks`,
+                    turnovers: `$periodStats.${quarter}.turnovers`,
+                    fouls: `$periodStats.${quarter}.fouls`,
+                    plusMinus: `$periodStats.${quarter}.plusMinus`
+                }
+            }
+        ]);
+
+        if (performanceStats.length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: "No stats found for this player in this quarter.",
+                data: {}
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Player performance for quarter retrieved successfully.",
+            data: performanceStats[0]
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error retrieving player performance for quarter.",
+            error: error.message
+        });
+    }
+};
+
+
+// Get player performance in a specific half (combines q1+q2 for first half, q3+q4 for second half)
+exports.getPlayerPerformanceByHalf = async (req, res) => {
+    try {
+        const { playerId, gameId, half } = req.params;   // front-end should send half as first or second
+
+        // check that the playerId and gameId are valid ObjectIds
+        if (!mongoose.Types.ObjectId.isValid(playerId) || !mongoose.Types.ObjectId.isValid(gameId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid playerId or gameId. Must be a valid ObjectId.",
+                data: {}
+            });
+        }
+
+        if (half !== 'first' && half !== 'second') {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid half parameter. Must be 'first' or 'second'.",
+                data: {}
+            });
+        }
+
+        const quarters = half === 'first' ? ['q1', 'q2'] : ['q3', 'q4'];
+
+        const performanceStats = await GameStats.aggregate([
+            { $match: { playerId: mongoose.Types.ObjectId(playerId), gameId: mongoose.Types.ObjectId(gameId) } },
+            {
+                $project: {
+                    points: { $add: [`$periodStats.${quarters[0]}.points`, `$periodStats.${quarters[1]}.points`] },
+                    rebounds: { $add: [
+                        { $add: [`$periodStats.${quarters[0]}.offensiveRebounds`, `$periodStats.${quarters[0]}.defensiveRebounds`] },
+                        { $add: [`$periodStats.${quarters[1]}.offensiveRebounds`, `$periodStats.${quarters[1]}.defensiveRebounds`] }
+                    ] },
+                    assists: { $add: [`$periodStats.${quarters[0]}.assists`, `$periodStats.${quarters[1]}.assists`] },
+                    steals: { $add: [`$periodStats.${quarters[0]}.steals`, `$periodStats.${quarters[1]}.steals`] },
+                    blocks: { $add: [`$periodStats.${quarters[0]}.blocks`, `$periodStats.${quarters[1]}.blocks`] },
+                    turnovers: { $add: [`$periodStats.${quarters[0]}.turnovers`, `$periodStats.${quarters[1]}.turnovers`] },
+                    fouls: { $add: [`$periodStats.${quarters[0]}.fouls`, `$periodStats.${quarters[1]}.fouls`] },
+                    plusMinus: { $add: [`$periodStats.${quarters[0]}.plusMinus`, `$periodStats.${quarters[1]}.plusMinus`] }
+                }
+            }
+        ]);
+
+        if (performanceStats.length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: "No stats found for this player in this half.",
+                data: {}
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Players performance for half retrieved successfully.",
+            data: performanceStats[0]
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error retrieving player performance for half.",
+            error: error.message
+        });
+    }
+};
+
+// Get performance for all players in a game by specific quarter (for coaches to analyze which players perform better in which quarters)
+exports.getPerformanceByQuarterForAllPlayers = async (req, res) => {
+    try {
+        const { gameId, quarter } = req.params;   // front-end should send quarter as q1, q2, q3, q4
+
+        const performanceStats = await GameStats.aggregate([
+            { $match: { gameId: mongoose.Types.ObjectId(gameId) } },
+            {
+                $project: {
+                    playerId: 1,
+                    points: `$periodStats.${quarter}.points`,
+                    rebounds: { $add: [`$periodStats.${quarter}.offensiveRebounds`, `$periodStats.${quarter}.defensiveRebounds`] },
+                    assists: `$periodStats.${quarter}.assists`,
+                    steals: `$periodStats.${quarter}.steals`,
+                    blocks: `$periodStats.${quarter}.blocks`,
+                    turnovers: `$periodStats.${quarter}.turnovers`,
+                    fouls: `$periodStats.${quarter}.fouls`,
+                    plusMinus: `$periodStats.${quarter}.plusMinus`
+                }
+            },
+            {
+                $lookup: {
+                    from: "players",
+                    localField: "playerId",
+                    foreignField: "_id",
+                    as: "playerDetails"
+                }
+            },
+            { $unwind: "$playerDetails" },
+            {
+                $project: {
+                    playerId: 1,
+                    fullName: "$playerDetails.fullName",
+                    jerseyNumber: "$playerDetails.jerseyNumber",
+                    position: "$playerDetails.position",
+                    points: 1,
+                    rebounds: 1,
+                    assists: 1,
+                    steals: 1,
+                    blocks: 1,
+                    turnovers: 1,
+                    fouls: 1,
+                    plusMinus: 1
+                }
+            },
+            { $sort: { jerseyNumber: 1 } }
+        ]);
+
+        res.status(200).json({
+            success: true,
+            message: "Performance for all players in quarter retrieved successfully.",
+            gameId,
+            data: performanceStats
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error retrieving performance for all players in quarter.",
+            error: error.message
+        });
+    }
+};
+
+
+// Get performance for all players in a game by specific half (for coaches to analyze which players perform better in which halves)
+exports.getPerformanceByHalfForAllPlayers = async (req, res) => {
+    try {
+        const { gameId, half } = req.params;   // front-end should send half as first or second
+
+        if (half !== 'first' && half !== 'second') {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid half parameter. Must be 'first' or 'second'.",
+                data: []
+            });
+        }
+
+        const quarters = half === 'first' ? ['q1', 'q2'] : ['q3', 'q4'];
+
+        const performanceStats = await GameStats.aggregate([
+            { $match: { gameId: mongoose.Types.ObjectId(gameId) } },
+            {
+                $project: {
+                    playerId: 1,
+                    points: { $add: [`$periodStats.${quarters[0]}.points`, `$periodStats.${quarters[1]}.points`] },
+                    rebounds: { $add: [
+                        { $add: [`$periodStats.${quarters[0]}.offensiveRebounds`, `$periodStats.${quarters[0]}.defensiveRebounds`] },
+                        { $add: [`$periodStats.${quarters[1]}.offensiveRebounds`, `$periodStats.${quarters[1]}.defensiveRebounds`] }
+                    ] },
+                    assists: { $add: [`$periodStats.${quarters[0]}.assists`, `$periodStats.${quarters[1]}.assists`] },
+                    steals: { $add: [`$periodStats.${quarters[0]}.steals`, `$periodStats.${quarters[1]}.steals`] },
+                    blocks: { $add: [`$periodStats.${quarters[0]}.blocks`, `$periodStats.${quarters[1]}.blocks`] },
+                    turnovers: { $add: [`$periodStats.${quarters[0]}.turnovers`, `$periodStats.${quarters[1]}.turnovers`] },
+                    fouls: { $add: [`$periodStats.${quarters[0]}.fouls`, `$periodStats.${quarters[1]}.fouls`] },
+                    plusMinus: { $add: [`$periodStats.${quarters[0]}.plusMinus`, `$periodStats.${quarters[1]}.plusMinus`] }
+                }
+            },
+            {
+                $lookup: {
+                    from: "players",
+                    localField: "playerId",
+                    foreignField: "_id",
+                    as: "playerDetails"
+                }
+            },
+            { $unwind: "$playerDetails" },
+            {
+                $project: {
+                    playerId: 1,
+                    fullName: "$playerDetails.fullName",
+                    jerseyNumber: "$playerDetails.jerseyNumber",
+                    position: "$playerDetails.position",
+                    points: 1,
+                    rebounds: 1,
+                    assists: 1,
+                    steals: 1,
+                    blocks: 1,
+                    turnovers: 1,
+                    fouls: 1,
+                    plusMinus: 1
+                }
+            },
+            { $sort: { jerseyNumber: 1 } }
+        ]);
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error retrieving performance for all players in half.",
+            error: error.message
+        });
+    }
+};
+
+
+// NOTE: **Since overtimes are stored as arrays of player stats unlike q1 - q4 which are objects, we need a separate endpoint to get performance for all players in overtimes
+// Also average points is not the same as ppg since a player may not score in a particular game
+// Find ways to optimize the analytics endpoints since some of them may be computationally expensive (especially the ones that require lookups and grouping) 
+// - maybe we can pre-aggregate some stats and store them in a separate collection for faster retrieval? This would require additional logic to update the pre-aggregated stats whenever new game stats are added or updated.
