@@ -45,6 +45,11 @@ const playerSchema = new mongoose.Schema({
         type: String,
         enum: ["Active", "Injured", "Inactive"]
     },
+    profilePhoto: {
+        type: String,
+        trim: true,
+        default: "/uploads/players/default.png"
+    },
     createdAt: {
         type: Date,
         default: Date.now

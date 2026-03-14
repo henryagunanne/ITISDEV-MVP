@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const upload = require("../middleware/upload");
 const playerController = require('../controllers/playerController');
 
 const { isAuthenticated, authorize } = require('../middleware/auth');
@@ -7,7 +8,7 @@ const { isAuthenticated, authorize } = require('../middleware/auth');
 router.use(isAuthenticated);
 
 // Create a new player record
-router.post('/create', authorize('admin'), playerController.createPlayer);
+router.post('/create', authorize('admin'), upload.single("profilePhoto"), playerController.createPlayer);
 
 // Get all players
 router.get('/all-players', playerController.getAllPlayers);

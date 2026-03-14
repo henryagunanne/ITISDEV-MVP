@@ -4,17 +4,16 @@ const GameStats = require('../models/GameStats');
 // Create Player
 exports.createPlayer = async (req, res) => {
     try {
-        const {
-            firstName,
-            lastName,
-            position,
-            jerseyNumber,
-            heightCm,
-            weightKg,
-            yearLevel,
-            course,
-            status
-        } = req.body;
+            const {firstName} = req.body.firstName;
+            const {lastName} = req.body.lastName;
+            const {position} = req.body.position;
+            const {jerseyNumber} = req.body.jerseyNumber;
+            const {heightCm} = req.body.heightCm;
+            const {weightKg} = req.body.weightKg;
+            const {yearLevel} = req.body.yearLevel;
+            const {course} = req.body.course;
+            const status = "Active"; // New players are active by default
+            const {profilePhoto} = req.file ? `/assets/images/uploads/players/${req.file.filename}` : "/assets/images/uploads/players/default.png"; // Handle profile photo upload profilePhoto: req.file ? req.file.path : null
 
         // Basic validation
         if (!firstName || !lastName || !position || !jerseyNumber || !heightCm || !weightKg || !yearLevel) {
@@ -46,7 +45,8 @@ exports.createPlayer = async (req, res) => {
             weightKg,
             yearLevel,
             course,
-            status
+            status,
+            profilePhoto
         });
 
         const savedPlayer = await player.save();
