@@ -1,4 +1,5 @@
-const MongoStore = require('connect-mongo'); // MongoDB session store
+const MongoStore = require('connect-mongo').default; // MongoDB session store
+
 
 const sessionConfig = {
     secret:  process.env.SESSION_SECRET || 'DLSU1234!', // Secret for signing session ID cookies (use env variable in production)

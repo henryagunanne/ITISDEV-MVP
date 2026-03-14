@@ -1,15 +1,97 @@
-<h1>Dashboard</h1>
-
-<div class="dashboard-grid">
-
-    <div class="card">Team Summary</div>
-    <div class="card">Next Game</div>
-
-    <div class="card">Last Game Result</div>
-    <div class="card">Top Performers</div>
-
-    <div class="card wide">
-        <canvas id="scoringTrend"></canvas>
+<!-- Main Content -->
+<main class="col-md-10 ms-auto px-4 py-4">
+    <div class="section-header">
+        <h4><i class="fas fa-tachometer-alt me-2"></i>Dashboard</h4>
+        <select id="seasonFilter" class="form-select" style="width:auto;">
+            <option value="">All Seasons</option>
+            <option value="UAAP Season 87">UAAP Season 87</option>
+            <option value="UAAP Season 86">UAAP Season 86</option>
+        </select>
     </div>
 
-</div>
+    <!-- Stat Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-label">Games Played</div>
+                        <div class="stat-value" id="totalGames">0</div>
+                    </div>
+                    <i class="fas fa-basketball-ball stat-icon"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="stat-label">Avg Points</div>
+                    <div class="stat-value" id="avgPoints">0</div>
+                </div>
+                <i class="fas fa-bullseye stat-icon"></i>
+            </div>
+        </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-label">Avg Rebounds</div>
+                        <div class="stat-value" id="avgRebounds">0</div>
+                    </div>
+                    <i class="fas fa-arrows-alt stat-icon"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-label">Record (W-L)</div>
+                        <div class="stat-value" id="record">0-0</div>
+                    </div>
+                    <i class="fas fa-trophy stat-icon"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-8">
+            <div class="chart-container">
+                <h5><i class="fas fa-chart-line me-2"></i>Team Scoring by Game</h5>
+                <canvas id="scoringChart" height="250"></canvas>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="chart-container">
+                <h5><i class="fas fa-chart-pie me-2"></i>Win/Loss Record</h5>
+                <canvas id="recordChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaders -->
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="chart-container">
+                <h5><i class="fas fa-star me-2"></i>Top Scorers (PPG)</h5>
+                <div id="topScorers"></div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="chart-container">
+                <h5><i class="fas fa-hand-rock me-2"></i>Top Rebounders (RPG)</h5>
+                <div id="topRebounders"></div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="chart-container">
+                <h5><i class="fas fa-hands-helping me-2"></i>Top Assists (APG)</h5>
+                <div id="topAssists"></div>
+            </div>
+        </div>
+    </div>
+</main>

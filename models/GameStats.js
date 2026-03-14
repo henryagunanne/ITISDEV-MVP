@@ -104,7 +104,7 @@ const gameStatsSchema = new mongoose.Schema({
 
 
 // Auto compute totals before saving
-gameStatsSchema.pre('save', function(next) {
+gameStatsSchema.pre('save', function() {
 
     // Gather all periods (quarters + overtimes)
     const periods = [
@@ -133,13 +133,13 @@ gameStatsSchema.pre('save', function(next) {
 
     this.updatedAt = Date.now();    // Update timestamp
 
-    next();
+    //next();
 });
 
 // Automatically populate game and player references
-gameStatsSchema.pre(/^find/, function (next) {
+gameStatsSchema.pre(/^find/, function () {
     this.populate('gameId').populate('playerId');
-    next();
+    //next();
 });
 
 // Prevent duplicate stats for same player in same game

@@ -1,4 +1,3 @@
-const { emit } = require("../app");
 const User = require("../models/User");
 
 // Login a user
@@ -10,7 +9,7 @@ exports.loginUser = async (req, res) => {
             return res.status(400).json({ error: 'Username and password are required' });
         }
 
-        const user = await User.findOne({ username: username.toLowerCase() }).lean();
+        const user = await User.findOne({ username: username.toLowerCase() });
 
         // check if user is in the database
         if (!user) {
@@ -37,6 +36,10 @@ exports.loginUser = async (req, res) => {
             role: user.role
         };
 
+        /*res.render('pages/dashboard', {
+            title: 'Dashboard - Green Archers Analytics',
+            user: req.session.user
+        });*/
         res.json({
             message: "Login successful",
             user: req.session.user

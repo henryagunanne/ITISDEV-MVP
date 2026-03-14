@@ -5,7 +5,8 @@ const { isAuthenticated } = require('../middleware/auth');
 
 // Login page
 router.get('/login', (req, res) => {
-    res.render('auth/login', { title: 'Login' });
+    // render static login page from public folder
+    res.sendFile(path.join(__dirname, '../public/src/html/login.html'));
 });
 
 // Handle login form submission

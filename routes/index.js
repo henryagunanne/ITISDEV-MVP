@@ -5,7 +5,9 @@ const { isAuthenticated } = require('../middleware/auth');
 
 
 // Homepage route
-router.get('/', (req, res) => {
+router.get('/', isAuthenticated, (req, res) => {
   res.render('index', { title: 'Home' });
 });
 
+
+module.exports = router;

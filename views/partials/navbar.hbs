@@ -1,46 +1,41 @@
-<nav class="navbar navbar-expand-lg navbar-dark archers-navbar">
-  <div class="container-fluid">
+<nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container-fluid">
+        <div class="logo">
+            <a class="navbar-brand" href="/">
+                <img src="../../public/assets/images/logo/maxresdefault.jpg" alt="Logo">
+            </a>
+        </div>
 
-    <a class="navbar-brand fw-bold" href="/">
-        Green Archers Analytics
-    </a>
+        <a class="navbar-brand" href="../html/dashboard.html">
+            <i class="fas fa-basketball-ball me-2"></i>Green Archers Analytics
+        </a>
 
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
-        <span class="navbar-toggler-icon"></span>
-    </button>
 
-    <div class="collapse navbar-collapse" id="navMenu">
-
-        <ul class="navbar-nav me-auto">
-
-            <li class="nav-item">
-                <a class="nav-link" href="/">Dashboard</a>
-            </li>
-
-            <li class="nav-item">
-                <a class="nav-link" href="/players">Players</a>
-            </li>
-
-            <li class="nav-item">
-                <a class="nav-link" href="/games">Games</a>
-            </li>
-
-            <li class="nav-item">
-                <a class="nav-link" href="/stats">Statistics</a>
-            </li>
-
-            <li class="nav-item">
-                <a class="nav-link" href="/reports">Reports</a>
-            </li>
-
-        </ul>
-
-        <ul class="navbar-nav">
-            <li class="nav-item">
-                <a class="nav-link" href="/logout">Logout</a>
-            </li>
-        </ul>
+        <div class="dropdown ms-3">
+          <button class="btn btn-outline-light dropdown-toggle d-flex align-items-center" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-person-circle fs-5 me-1"></i>
+            {{#if user}}
+              <span>{{user.firstName}}</span>
+            {{else}}
+              <span>Account</span>
+            {{/if}}
+          </button>
+          <ul class="dropdown-menu">
+            {{#if user}}
+              <li class="profile">
+                <a class="dropdown-item" href="/api/users/profile">Profile</a>
+              </li>
+              <li class="logout"> 
+                  <button type="submit" id="logoutBtn" class="dropdown-item">Sign Out</button>
+              </li>
+            {{else}}
+              <li class="login">
+                <form id="loginForm" action="/auth/login" method="GET">
+                  <button type="submit" id="loginBtn" class="dropdown-item">Sign In</button>
+                </form>
+              </li>
+            {{/if}}
+        </div>
 
     </div>
-  </div>
 </nav>

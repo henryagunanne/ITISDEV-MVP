@@ -1,23 +1,39 @@
-<div class="sidebar">
+<!-- Sidebar -->
+<nav class="col-md-2 sidebar d-none d-md-block">
+    <div class="container-fluid">
+        <!-- Side Bar toggler -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#sideBarToggle" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
 
-    <h5 class="sidebar-title">Team Management</h5>
-
-    <a href="/players">Roster</a>
-    <a href="/players/add">Add Player</a>
-
-    <h5 class="sidebar-title mt-4">Games</h5>
-
-    <a href="/games">Game List</a>
-    <a href="/games/add">Create Game</a>
-
-    <h5 class="sidebar-title mt-4">Statistics</h5>
-
-    <a href="/stats/live">Live Game Stats</a>
-    <a href="/stats/season">Season Analytics</a>
-
-    <h5 class="sidebar-title mt-4">Reports</h5>
-
-    <a href="/reports/player">Player Reports</a>
-    <a href="/reports/team">Team Reports</a>
-
-</div>
+        <div class="collapse navbar-collapse" id="sideBarToggle">
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link" href="../html/dashboard.html">
+                        <i class="fas fa-tachometer-alt"></i>Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="../html/players.html">
+                        <i class="fas fa-users"></i>Players
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="../html/games.html">
+                        <i class="fas fa-calendar-alt"></i>Games
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="../html/stats.html">
+                        <i class="fas fa-chart-bar"></i>Statistics
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="../html/reports.html">
+                        <i class="fas fa-file-alt"></i>Reports
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>

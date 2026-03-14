@@ -6,3 +6,5 @@ const { isAuthenticated, authorize } = require('../middleware/auth');
 
 router.use(isAuthenticated);
 
+
+module.exports = router;

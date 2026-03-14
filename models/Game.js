@@ -91,16 +91,16 @@ const gameSchema = new mongoose.Schema({
 });
 
 // Update timestamp
-gameSchema.pre('save', function (next) {
+gameSchema.pre('save', function () {
     this.updatedAt = Date.now();
-    next();
+   //next();
 });
 
 // Automatically populate user reference
-gameSchema.pre('find', function (next) {
+gameSchema.pre('find', function () {
     this.populate('createdBy', 'username email')
     .populate('tournament'); // Populate all fields in the tournament schema
-    next();
+    //next();
 });
 
 // Method to calculate final score based on quarter scores and overtimes

@@ -39,9 +39,9 @@ const tournamentSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Update timestamp
-tournamentSchema.pre('save', function (next) {
+tournamentSchema.pre('save', function () {
     this.updatedAt = Date.now();
-    next();
+    //next();
 });
 
 // Virtual for formatted date range
@@ -53,9 +53,9 @@ tournamentSchema.virtual('dateRange').get(function () {
 });
 
 // Automatically populate user reference
-tournamentSchema.pre('find', function (next) {
+tournamentSchema.pre('find', function () {
     this.populate('createdBy', 'username'); // Populate createdBy with username only
-    next();
+    //next();
 });
 
 

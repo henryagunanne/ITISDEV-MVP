@@ -54,27 +54,18 @@ const userSchema = new mongoose.Schema({
 });
 
 // Pre-save hook to hash password before saving
-userSchema.pre('save', async function (next) {
-    if (!this.isModified('password')) return next(); // Only hash if password is new or modified
-    try {
-      const salt = await bcrypt.genSalt(12);
-      this.password = await bcrypt.hash(this.password, salt);
-      next();
-    } catch (err) {
-      next(err);
-    }
+userSchema.pre('save', async function () {
+    this.updatedAt = Date.now();
+
+    if (!this.isModified('password')) return; // Only hash if password is new or modified
+    const salt = await bcrypt.genSalt(12);
+    this.password = await bcrypt.hash(this.password, salt);
 });
 
 // Method to compare password for login
 userSchema.methods.comparePassword = async function (candidatePassword) {
     return await bcrypt.compare(candidatePassword, this.password);
 };
-
-// pre-save hook to update the updatedAt field
-userSchema.pre('save', function (next) {
-    this.updatedAt = Date.now();
-    next();
-});
 
 // Export the model for use in other files
 module.exports = mongoose.model('User', userSchema);

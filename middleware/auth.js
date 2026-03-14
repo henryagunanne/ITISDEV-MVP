@@ -3,10 +3,7 @@ const isAuthenticated = (req, res, next) => {
     if (req.session.user) {
         return next();
     } else {
-        res.status(403).render('error/access-denied', { 
-            title: 'Access Denied',
-            isAdmin: req.session.user?.role === 'Admin'
-        });  
+        res.status(403).sendFile('login.html', { root: 'public/src/html' });
     }
 };
 
@@ -22,4 +19,9 @@ const authorizeRoles = (...roles) => {
             });  
         }
     };
+};
+
+module.exports = {
+    isAuthenticated,
+    authorize: authorizeRoles
 };

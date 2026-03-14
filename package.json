@@ -4,7 +4,8 @@
   "description": "Application Development in fulfillment of the course requirements for ITISDEV",
   "main": "server.js",
   "scripts": {
-    "test": "NODE_ENV=test jest --detectOpenHandles --runInBand"
+    "test": "NODE_ENV=test jest --detectOpenHandles --runInBand",
+    "seed": "node scripts/seed.js"
   },
   "repository": {
     "type": "git",

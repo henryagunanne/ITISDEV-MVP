@@ -56,9 +56,8 @@ const playerSchema = new mongoose.Schema({
 });
 
 // pre-save hook to update the updatedAt field
-playerSchema.pre('save', function (next) {
+playerSchema.pre('save', function () {
     this.updatedAt = Date.now();
-    next();
 });
 
 // Automatically combine firstname and lastname into a virtual field

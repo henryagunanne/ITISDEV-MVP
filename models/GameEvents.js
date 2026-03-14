@@ -48,6 +48,4 @@ const gameEventSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 
-const GameEvent = mongoose.model("GameEvent", gameEventSchema);
-
-module.exports = GameEvent;
+module.exports = mongoose.model("GameEvent", gameEventSchema);
