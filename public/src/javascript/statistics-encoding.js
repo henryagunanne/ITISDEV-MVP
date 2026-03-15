@@ -3,102 +3,199 @@ document.addEventListener("DOMContentLoaded", () => {
   const gameSelect = document.getElementById("gameSelect");
   const addStatsBtn = document.getElementById("addStatsBtn");
   const statsTableBody = document.getElementById("statsTableBody");
-
+  
+  const statsModal = document.getElementById("statsModal");
+  const closeModal = document.getElementById("closeModal");
+  const statsForm = document.getElementById("statsForm");
+  
+  const hiddenGameId = document.getElementById("gameId");
+  
+  
+  // DEMO games (later replace with API)
   const games = [
-    { id: "1", name: "Game 1 - vs Eagles" },
-    { id: "2", name: "Game 2 - vs Falcons" }
+  { id: "1", name: "Game 1 - vs Eagles" },
+  { id: "2", name: "Game 2 - vs Falcons" }
   ];
-
+  
   games.forEach((game) => {
-    const option = document.createElement("option");
-    option.value = game.id;
-    option.textContent = game.name;
-    gameSelect.appendChild(option);
+  const option = document.createElement("option");
+  option.value = game.id;
+  option.textContent = game.name;
+  gameSelect.appendChild(option);
   });
-
+  
+  
+  // GAME SELECT
   gameSelect.addEventListener("change", () => {
-
-    const gameId = gameSelect.value;
-
-    if (!gameId) {
-      addStatsBtn.disabled = true;
-      statsTableBody.innerHTML =
-        `<tr><td colspan="15" style="text-align:center">Select a game</td></tr>`;
-      return;
-    }
-
-    addStatsBtn.disabled = false;
-
-    loadStats(gameId);
-
-  });
-
-
-  async function loadStats(gameId) {
-
-    try {
-
-      const response = await fetch(`/api/gameStats/game/${gameId}`);
-      const result = await response.json();
-
-      const stats = result.data;
-
-      if (!stats || stats.length === 0) {
-
-        statsTableBody.innerHTML =
-          `<tr><td colspan="15" style="text-align:center">No stats yet</td></tr>`;
-
-        return;
-
-      }
-
-      statsTableBody.innerHTML = "";
-
-      stats.forEach(stat => {
-
-        const totals = stat.totals || {};
-
-        const playerName =
-          stat.playerId?.fullName ||
-          stat.playerId?.name ||
-          "Unknown Player";
-
-        const row = document.createElement("tr");
-
-        row.innerHTML = `
-          <td>${playerName}</td>
-          <td>${totals.minutesPlayed || 0}</td>
-          <td>${totals.points || 0}</td>
-          <td>${totals.fieldGoalsMade || 0}/${totals.fieldGoalsAttempted || 0}</td>
-          <td>${totals.threePointersMade || 0}/${totals.threePointersAttempted || 0}</td>
-          <td>${totals.freeThrowsMade || 0}/${totals.freeThrowsAttempted || 0}</td>
-          <td>${totals.offensiveRebounds || 0}</td>
-          <td>${totals.defensiveRebounds || 0}</td>
-          <td>${totals.assists || 0}</td>
-          <td>${totals.steals || 0}</td>
-          <td>${totals.blocks || 0}</td>
-          <td>${totals.turnovers || 0}</td>
-          <td>${totals.fouls || 0}</td>
-          <td>${totals.plusMinus || 0}</td>
-          <td>
-            <button class="edit-btn" data-id="${stat._id}">Edit</button>
-            <button class="delete-btn" data-id="${stat._id}">Delete</button>
-          </td>
-        `;
-
-        statsTableBody.appendChild(row);
-
-      });
-
-    } catch (err) {
-
-      console.error(err);
-
-      statsTableBody.innerHTML =
-        `<tr><td colspan="15" style="text-align:center">Error loading stats</td></tr>`;
-
-    }
-
+  
+  const gameId = gameSelect.value;
+  
+  if (!gameId) {
+  
+  addStatsBtn.disabled = true;
+  
+  statsTableBody.innerHTML =
+  `<tr><td colspan="11" style="text-align:center">Select a game</td></tr>`;
+  
+  return;
   }
-
-});
+  
+  addStatsBtn.disabled = false;
+  
+  loadStats(gameId);
+  
+  });
+  
+  
+  // OPEN MODAL
+  addStatsBtn.addEventListener("click", () => {
+  
+  const selectedGame = gameSelect.value;
+  
+  hiddenGameId.value = selectedGame;
+  
+  statsModal.style.display = "flex";
+  
+  });
+  
+  
+  // CLOSE MODAL
+  closeModal.addEventListener("click", () => {
+  
+  statsModal.style.display = "none";
+  
+  });
+  
+  
+  // LOAD STATS
+  async function loadStats(gameId) {
+  
+  try {
+  
+  const response = await fetch(`/api/gameStats/game/${gameId}`);
+  const result = await response.json();
+  
+  const stats = result.data;
+  
+  if (!stats || stats.length === 0) {
+  
+  statsTableBody.innerHTML =
+  `<tr><td colspan="11" style="text-align:center">No stats yet</td></tr>`;
+  
+  return;
+  }
+  
+  statsTableBody.innerHTML = "";
+  
+  stats.forEach(stat => {
+  
+  const totals = stat.totals || {};
+  
+  const playerName =
+  stat.playerId?.fullName ||
+  stat.playerId?.name ||
+  "Unknown Player";
+  
+  const row = document.createElement("tr");
+  
+  row.innerHTML = `
+  <td>${playerName}</td>
+  <td>${totals.minutesPlayed || 0}</td>
+  <td>${totals.points || 0}</td>
+  <td>${totals.assists || 0}</td>
+  <td>${totals.offensiveRebounds || 0}</td>
+  <td>${totals.defensiveRebounds || 0}</td>
+  <td>${totals.steals || 0}</td>
+  <td>${totals.blocks || 0}</td>
+  <td>${totals.turnovers || 0}</td>
+  <td>${totals.fouls || 0}</td>
+  <td>${totals.plusMinus || 0}</td>
+  `;
+  
+  statsTableBody.appendChild(row);
+  
+  });
+  
+  } catch (err) {
+  
+  console.error(err);
+  
+  statsTableBody.innerHTML =
+  `<tr><td colspan="11" style="text-align:center">Error loading stats</td></tr>`;
+  
+  }
+  
+  }
+  
+  
+  // SAVE STATS
+  statsForm.addEventListener("submit", async (e) => {
+  
+  e.preventDefault();
+  
+  const gameId = hiddenGameId.value;
+  
+  const playerId = document.getElementById("playerId").value;
+  
+  const statsData = {
+  
+  gameId,
+  playerId,
+  
+  periodStats: {
+  
+  q1: {
+  
+  minutesPlayed: Number(document.getElementById("minutesPlayed").value),
+  points: Number(document.getElementById("points").value),
+  assists: Number(document.getElementById("assists").value),
+  offensiveRebounds: Number(document.getElementById("offensiveRebounds").value),
+  defensiveRebounds: Number(document.getElementById("defensiveRebounds").value),
+  steals: Number(document.getElementById("steals").value),
+  blocks: Number(document.getElementById("blocks").value),
+  turnovers: Number(document.getElementById("turnovers").value),
+  fouls: Number(document.getElementById("fouls").value),
+  plusMinus: Number(document.getElementById("plusMinus").value)
+  
+  }
+  
+  }
+  
+  };
+  
+  try {
+  
+  const response = await fetch("/api/gameStats/create", {
+  
+  method: "POST",
+  headers: {
+  "Content-Type": "application/json"
+  },
+  body: JSON.stringify(statsData)
+  
+  });
+  
+  const result = await response.json();
+  
+  if(result.success){
+  
+  alert("Stats saved successfully");
+  
+  statsModal.style.display = "none";
+  
+  loadStats(gameId);
+  
+  statsForm.reset();
+  
+  }
+  
+  } catch(err){
+  
+  console.error(err);
+  alert("Error saving stats");
+  
+  }
+  
+  });
+  
+  });
