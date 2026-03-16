@@ -10,21 +10,46 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const hiddenGameId = document.getElementById("gameId");
 
-  // DEMO games (replace later with API /api/games)
-  const games = [
-    { id: "1", name: "Game 1 - vs Eagles" },
-    { id: "2", name: "Game 2 - vs Falcons" }
-  ];
 
-  games.forEach((game) => {
-    const option = document.createElement("option");
-    option.value = game.id;
-    option.textContent = game.name;
-    gameSelect.appendChild(option);
-  });
+  // LOAD GAMES FROM API
+ 
+
+  async function loadGames() {
+
+    try {
+
+      const response = await fetch("/api/games");
+      const result = await response.json();
+
+      const games = result.data;
+
+      games.forEach((game) => {
+
+        const option = document.createElement("option");
+
+        option.value = game._id;
+
+        option.textContent = `${game.opponent} (${new Date(game.gameDate).toLocaleDateString()})`;
+
+        gameSelect.appendChild(option);
+
+      });
+
+    } catch (error) {
+
+      console.error("Error loading games:", error);
+
+    }
+
+  }
+
+  loadGames();
 
 
+  // ===============================
   // GAME SELECT
+  // ===============================
+
   gameSelect.addEventListener("change", () => {
 
     const gameId = gameSelect.value;
@@ -37,6 +62,7 @@ document.addEventListener("DOMContentLoaded", () => {
         `<tr><td colspan="11" style="text-align:center">Select a game</td></tr>`;
 
       return;
+
     }
 
     addStatsBtn.disabled = false;
@@ -46,7 +72,10 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
 
+
   // OPEN MODAL
+  
+
   addStatsBtn.addEventListener("click", () => {
 
     const selectedGame = gameSelect.value;
@@ -58,7 +87,10 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
 
+
   // CLOSE MODAL
+ 
+
   closeModal.addEventListener("click", () => {
 
     statsModal.style.display = "none";
@@ -66,16 +98,14 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
 
-  // LOAD STATS FROM API
-  async function loadStats(gameId) {
+
+  // LOAD STATS
+ 
+async function loadStats(gameId) {
 
     try {
 
       const response = await fetch(`/api/gameStats/game/${gameId}`);
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch stats");
-      }
 
       const result = await response.json();
 
@@ -87,6 +117,7 @@ document.addEventListener("DOMContentLoaded", () => {
           `<tr><td colspan="11" style="text-align:center">No stats yet</td></tr>`;
 
         return;
+
       }
 
       statsTableBody.innerHTML = "";
@@ -97,7 +128,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const playerName =
           stat.playerId
-            ? `${stat.playerId.firstName || ""} ${stat.playerId.lastName || ""}`
+            ? `${stat.playerId.firstName} ${stat.playerId.lastName}`
             : "Unknown Player";
 
         const row = document.createElement("tr");
@@ -120,9 +151,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
       });
 
-    } catch (err) {
+    } catch (error) {
 
-      console.error("Error loading stats:", err);
+      console.error("Error loading stats:", error);
 
       statsTableBody.innerHTML =
         `<tr><td colspan="11" style="text-align:center">Error loading stats</td></tr>`;
@@ -132,7 +163,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
 
+  
   // SAVE STATS
+
   statsForm.addEventListener("submit", async (e) => {
 
     e.preventDefault();
@@ -197,9 +230,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
       }
 
-    } catch (err) {
+    } catch (error) {
 
-      console.error("Error saving stats:", err);
+      console.error("Error saving stats:", error);
+
       alert("Error saving stats");
 
     }
