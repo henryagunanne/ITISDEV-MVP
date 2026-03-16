@@ -13,5 +13,9 @@ router.get('/dashboard', (req, res) => {
     });
 });
 
+router.get("/statistics", (req, res) => {
+    res.render("pages/statistics_encoding");
+  });
+
 
 module.exports = router;
