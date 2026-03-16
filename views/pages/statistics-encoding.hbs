@@ -1,0 +1,95 @@
+<h2>Statistics Encoding</h2>
+
+<div class="controls-section">
+
+<label>Select Game</label>
+
+<select id="gameSelect">
+<option value="">Choose a game...</option>
+</select>
+
+<button id="addStatsBtn" disabled>
+Add Player Stats
+</button>
+
+</div>
+
+
+<table class="table">
+
+<thead>
+<tr>
+<th>Player</th>
+<th>MIN</th>
+<th>PTS</th>
+<th>AST</th>
+<th>OREB</th>
+<th>DREB</th>
+<th>STL</th>
+<th>BLK</th>
+<th>TO</th>
+<th>PF</th>
+<th>+/-</th>
+</tr>
+</thead>
+
+<tbody id="statsTableBody">
+
+<tr>
+<td colspan="11">Select a game</td>
+</tr>
+
+</tbody>
+
+</table>
+
+
+<!-- MODAL -->
+
+<div id="statsModal" style="display:none">
+
+<form id="statsForm">
+
+<input type="hidden" id="gameId">
+
+<label>Player ID</label>
+<input type="text" id="playerId" required>
+
+<label>Minutes Played</label>
+<input type="number" id="minutesPlayed" value="0">
+
+<label>Points</label>
+<input type="number" id="points" value="0">
+
+<label>Assists</label>
+<input type="number" id="assists" value="0">
+
+<label>Offensive Rebounds</label>
+<input type="number" id="offensiveRebounds" value="0">
+
+<label>Defensive Rebounds</label>
+<input type="number" id="defensiveRebounds" value="0">
+
+<label>Steals</label>
+<input type="number" id="steals" value="0">
+
+<label>Blocks</label>
+<input type="number" id="blocks" value="0">
+
+<label>Turnovers</label>
+<input type="number" id="turnovers" value="0">
+
+<label>Fouls</label>
+<input type="number" id="fouls" value="0">
+
+<label>Plus Minus</label>
+<input type="number" id="plusMinus" value="0">
+
+<button type="submit">Save Stats</button>
+
+</form>
+
+</div>
+
+
+<script src="/javascript/statistics-encoding.js"></script>
