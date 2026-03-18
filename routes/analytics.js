@@ -74,14 +74,18 @@ router.get('/season/:season', analyticsController.getAggregatedStatsBySeason);
 // ── Leaderboards ───────────────────────────────────────────
 // GET /api/analytics/leaders/scorers/:season/:limit?
 // Returns top scorers for a season, sorted by PPG. limit defaults to 10.
-router.get('/leaders/scorers/:season/:limit?', analyticsController.getTopScorersBySeason);
+router.get('/leaders/scorers/:season/:limit', analyticsController.getTopScorersBySeason);
 
 // GET /api/analytics/leaders/rebounders/:season/:limit?
 // Returns top rebounders for a season, sorted by RPG. limit defaults to 10.
-router.get('/leaders/rebounders/:season/:limit?', analyticsController.getTopReboundersBySeason);
+router.get('/leaders/rebounders/:season/:limit', analyticsController.getTopReboundersBySeason);
 
 // GET /api/analytics/leaders/assists/:season/:limit?
 // Returns top assist leaders for a season, sorted by APG. limit defaults to 10.
-router.get('/leaders/assists/:season/:limit?', analyticsController.getTopAssistLeadersBySeason);
+router.get('/leaders/assists/:season/:limit', analyticsController.getTopAssistLeadersBySeason);
 
 module.exports = router;
+
+
+
+
