@@ -28,6 +28,11 @@ app.engine('hbs', exphbs.engine({
         },
         startsWith: function (str, prefix) {
             return str && str.startsWith(prefix);
+        },
+        formatDate: function (dateVal) {
+            if (!dateVal) return '—';
+            const d = new Date(dateVal);
+            return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
         }
     }
 }));

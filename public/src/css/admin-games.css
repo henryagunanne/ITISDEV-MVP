@@ -211,3 +211,100 @@ td { padding: 10px; border-bottom: 1px solid #ddd; }
     background: #084b2f;
     transform: scale(1.02);
 }
+
+/* Status badges */
+.status-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+.status-Scheduled  { background: #cce5ff; color: #004085; }
+.status-Completed  { background: #d4edda; color: #155724; }
+.status-Cancelled  { background: #e2e3e5; color: #383d41; }
+
+/* Result badges */
+.result { padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+.result.Win  { background: #d4edda; color: #155724; }
+.result.Loss { background: #f8d7da; color: #721c24; }
+
+/* Edit / Delete action buttons */
+.edit-btn {
+    background: #0b5d3b;
+    color: white;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-right: 5px;
+    transition: background 0.2s;
+}
+.edit-btn:hover { background: #084b2f; }
+
+.delete-btn {
+    background: #e74c3c;
+    color: white;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.delete-btn:hover { background: #c0392b; }
+
+/* Alert / error message in modal */
+.alert-msg {
+    background: #fde8e8;
+    color: #c0392b;
+    border: 1px solid #f5c6cb;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+}
+
+/* Cancel & delete confirm buttons */
+.cancel-btn {
+    padding: 10px 24px;
+    background: #e2e3e5;
+    color: #333;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+}
+.delete-confirm-btn {
+    padding: 10px 24px;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+}
+.delete-confirm-btn:hover { background: #c0392b; }
+
+/* Toast notification */
+.toast-msg {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    color: white;
+    padding: 14px 22px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    z-index: 9999;
+    max-width: calc(100vw - 60px);
+    word-wrap: break-word;
+    animation: fadeInUp 0.3s ease;
+}
+
+@keyframes fadeInUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}

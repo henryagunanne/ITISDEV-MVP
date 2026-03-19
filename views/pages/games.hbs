@@ -1,25 +1,201 @@
-<h1>Games</h1>
+<link rel="stylesheet" href="/src/css/admin-games.css">
 
-<table class="table">
-    <thead>
-        <tr>
-            <th>Date</th>
-            <th>Opponent</th>
-            <th>Result</th>
-            <th>Encode</th>
-            <th>View</th>
-        </tr>
-    </thead>
+<div class="col-md-10 main" id="gamesPage">
 
-    <tbody>
-        {{#each games}}
-        <tr>
-            <td>{{this.date}}</td>
-            <td>{{this.opponent}}</td>
-            <td>{{this.result}}</td>
-            <td><a href="/games/{{this._id}}/encode" class="btn-primary">Encode</a></td>
-            <td><a href="/games/{{this._id}}" class="btn-secondary">View</a></td>
-        </tr>
-        {{/each}}
-    </tbody>
-</table>
+    <!-- Page Header -->
+    <div class="dashboard-header">
+        <h2><i class="fas fa-calendar-alt me-2"></i>Games</h2>
+        <div class="controls">
+            <input type="text" id="searchOpponent" placeholder="&#128269; Search opponent...">
+            <select id="filterResult">
+                <option value="">All Results</option>
+                <option value="Win">Win</option>
+                <option value="Loss">Loss</option>
+            </select>
+            <select id="filterStatus">
+                <option value="">All Status</option>
+                <option value="Scheduled">Scheduled</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled">Cancelled</option>
+            </select>
+            {{#if isAdminOrCoach}}
+            <button class="add-game" id="openAddModal">
+                <i class="fas fa-plus"></i> Add Game
+            </button>
+            {{/if}}
+        </div>
+    </div>
+
+    <!-- Games Table -->
+    <div class="table-container">
+        <table id="gamesTable">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Date</th>
+                    <th>Opponent</th>
+                    <th>Tournament</th>
+                    <th>Venue</th>
+                    <th>Score</th>
+                    <th>Result</th>
+                    <th>Status</th>
+                    {{#if isAdminOrCoach}}<th>Actions</th>{{/if}}
+                </tr>
+            </thead>
+            <tbody id="gamesTableBody">
+                {{#each games}}
+                <tr
+                    data-id="{{this._id}}"
+                    data-opponent="{{this.opponent}}"
+                    data-venue="{{this.venue}}"
+                    data-date="{{this.gameDate}}"
+                    data-teamscore="{{this.teamScore}}"
+                    data-opponentscore="{{this.opponentScore}}"
+                    data-status="{{this.status}}"
+                    data-result="{{this.result}}"
+                    data-tournament="{{this.tournament._id}}"
+                >
+                    <td>{{@index}}</td>
+                    <td>{{formatDate this.gameDate}}</td>
+                    <td><strong>{{this.opponent}}</strong></td>
+                    <td>
+                        {{#if this.tournament}}
+                            {{this.tournament.name}}<br>
+                            <small class="text-muted">{{this.tournament.league}} · S{{this.tournament.season}}</small>
+                        {{else}}
+                            <span class="text-muted">—</span>
+                        {{/if}}
+                    </td>
+                    <td>{{this.venue}}</td>
+                    <td>
+                        {{#if (eq this.status "Scheduled")}}
+                            <span class="text-muted">TBD</span>
+                        {{else}}
+                            <strong>{{this.teamScore}}</strong> – {{this.opponentScore}}
+                        {{/if}}
+                    </td>
+                    <td>
+                        {{#if this.result}}
+                            <span class="result {{this.result}}">{{this.result}}</span>
+                        {{else}}
+                            <span class="text-muted">—</span>
+                        {{/if}}
+                    </td>
+                    <td>
+                        <span class="status-badge status-{{this.status}}">{{this.status}}</span>
+                    </td>
+                    {{#if ../isAdminOrCoach}}
+                    <td>
+                        <button class="edit-btn" onclick="openEditModal(this)">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="delete-btn" onclick="openDeleteModal('{{this._id}}', '{{this.opponent}}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                    {{/if}}
+                </tr>
+                {{else}}
+                <tr><td colspan="9" class="text-center text-muted py-4">No games found.</td></tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+
+    <div id="noResults" style="display:none;" class="text-center text-muted mt-4">
+        <i class="fas fa-search fa-2x mb-2"></i>
+        <p>No games match your search or filter.</p>
+    </div>
+</div>
+
+<!-- ===== ADD GAME MODAL ===== -->
+<div class="modal" id="addModal">
+    <div class="modal-content">
+        <span class="close" id="closeAddModal">&times;</span>
+        <h3 id="modalTitle">Add Game</h3>
+        <div id="addErrorMsg" class="alert-msg mb-3" style="display:none;"></div>
+        <form id="addGameForm" onsubmit="return false;">
+            <select id="addTournament" required>
+                <option value="">Select Tournament</option>
+                {{#each tournaments}}
+                <option value="{{this._id}}">{{this.name}} ({{this.league}} · S{{this.season}})</option>
+                {{/each}}
+            </select>
+            <input type="text" id="addOpponent" placeholder="Opponent Team" required>
+            <input type="text" id="addVenue" placeholder="Venue" required>
+            <div class="form-row">
+                <input type="date" id="addDate" required>
+                <input type="time" id="addTime" required>
+            </div>
+            <select id="addStatus" required>
+                <option value="Scheduled">Scheduled</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled">Cancelled</option>
+            </select>
+            <div class="form-row" id="addScoreRow">
+                <input type="number" id="addTeamScore" placeholder="Team Score" min="0" value="0">
+                <input type="number" id="addOppScore" placeholder="Opponent Score" min="0" value="0">
+            </div>
+            <button type="button" id="saveGameBtn" onclick="addGame()">
+                <i class="fas fa-save me-1"></i> Save Game
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- ===== EDIT GAME MODAL ===== -->
+<div class="modal" id="editModal">
+    <div class="modal-content">
+        <span class="close" id="closeEditModal">&times;</span>
+        <h3>Edit Game</h3>
+        <input type="hidden" id="editGameId">
+        <div id="editErrorMsg" class="alert-msg mb-3" style="display:none;"></div>
+        <form id="editGameForm" onsubmit="return false;">
+            <select id="editTournament" required>
+                <option value="">Select Tournament</option>
+                {{#each tournaments}}
+                <option value="{{this._id}}">{{this.name}} ({{this.league}} · S{{this.season}})</option>
+                {{/each}}
+            </select>
+            <input type="text" id="editOpponent" placeholder="Opponent Team" required>
+            <input type="text" id="editVenue" placeholder="Venue" required>
+            <div class="form-row">
+                <input type="date" id="editDate" required>
+                <input type="time" id="editTime" required>
+            </div>
+            <select id="editStatus" required>
+                <option value="Scheduled">Scheduled</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled">Cancelled</option>
+            </select>
+            <div class="form-row">
+                <input type="number" id="editTeamScore" placeholder="Team Score" min="0" value="0">
+                <input type="number" id="editOppScore" placeholder="Opponent Score" min="0" value="0">
+            </div>
+            <button type="button" id="updateGameBtn" onclick="updateGame()">
+                <i class="fas fa-save me-1"></i> Update Game
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- ===== DELETE CONFIRM MODAL ===== -->
+<div class="modal" id="deleteModal">
+    <div class="modal-content" style="width:360px;">
+        <span class="close" id="closeDeleteModal">&times;</span>
+        <h3 style="font-size:18px;">Delete Game</h3>
+        <p id="deleteConfirmText" class="text-center my-3"></p>
+        <input type="hidden" id="deleteGameId">
+        <div class="d-flex gap-2 justify-content-center">
+            <button class="cancel-btn" id="cancelDeleteBtn">Cancel</button>
+            <button class="delete-confirm-btn" onclick="confirmDelete()">
+                <i class="fas fa-trash me-1"></i> Delete
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast-msg" style="display:none;"></div>
+
+<script src="/src/javascript/admin-games.js"></script>

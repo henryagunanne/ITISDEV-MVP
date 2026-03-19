@@ -3,7 +3,8 @@ const router = express.Router();
 const Player = require('../models/Player');
 const GameStats = require('../models/GameStats');
 const mongoose = require('mongoose');
-
+const Game = require('../models/Game');
+const Tournament = require('../models/Tournament');
 const { isAuthenticated } = require('../middleware/auth');
 
 // Dashboard
@@ -76,6 +77,29 @@ router.get('/players/:id', isAuthenticated, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send('Error loading player profile');
+  }
+});
+
+// Games list page
+router.get('/games', isAuthenticated, async (req, res) => {
+  try {
+    const games = await Game.find()
+      .populate('tournament', 'name league season')
+      .sort({ gameDate: -1 })
+      .lean();
+    const tournaments = await Tournament.find().sort({ startDate: -1 }).lean();
+    const user = req.session.user;
+    const isAdminOrCoach = user && (user.role === 'Admin' || user.role === 'Coach');
+    res.render('pages/games', {
+      title: 'Games',
+      games,
+      tournaments,
+      isAdminOrCoach,
+      user
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error loading games page');
   }
 });
 
