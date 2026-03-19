@@ -1,0 +1,68 @@
+<main class="col-md-10 ms-auto px-4 py-4">
+<!-- ==================== SETUP PAGE ==================== -->
+
+<div id="setup-page">
+    <div class="container py-5">
+        <div class="text-center mb-5">
+            <h1 class="fw-900 display-5">STATISTICS <span class="text-warning">SYSTEM</span></h1>
+            <p class="text-muted">Pre-Game Setup — Enter opponent roster to begin</p>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card bg-dark border-secondary">
+                    <div class="card-header bg-success bg-opacity-25 border-secondary">
+                        <h4 class="mb-0 fw-bold text-white">Opponent Team Setup</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-white">Opponent Team Name *</label>
+                            <input type="text" id="opponent-name" class="form-control form-control-lg bg-dark border-secondary text-white" placeholder="e.g. Wildcats" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-white">Tournament</label>
+                            <select class="form-select form-control-lg bg-dark border-secondary text-white" id="tournament">
+                                <option value="" class="text-white" selected disabled>Choose Tournament</option>
+                                {{#each tournaments}}
+                                    <option value="{{this._id}}" class="text-white">{{this.name}}</option>
+                                {{/each}}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-white">Venue</label>
+                            <input type="text" id="game-venue" class="form-control bg-dark border-secondary text-white" placeholder="e.g. Main Gymnasium" value="TBD">
+                        </div>
+
+                        <hr class="border-secondary">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold mb-0 text-white">Opponent Players <span id="player-count" class="badge bg-secondary">0</span></h5>
+                            <button id="add-opp-player" class="btn btn-outline-warning btn-sm">+ Add Player</button>
+                        </div>
+                        <div class="small text-muted mb-3">Minimum 5 players required. Jersey numbers must be unique.</div>
+
+                        <div id="opp-players-list"></div>
+
+                        <div id="setup-error" class="alert alert-danger d-none mt-3"></div>
+
+                        <div class="d-grid mt-4">
+                            <button id="start-game-btn" class="btn btn-success btn-lg fw-bold" disabled>
+                                START GAME →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Home team preview -->
+                <div class="card bg-dark border-secondary mt-4">
+                    <div class="card-header bg-success bg-opacity-25 border-secondary">
+                        <h5 class="mb-0 fw-bold text-white">Home Team Roster</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="home-roster-preview" class="text-muted">Loading players...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</main>

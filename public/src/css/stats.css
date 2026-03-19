@@ -1,0 +1,83 @@
+:root {
+    --home: #3b82f6;
+    --opponent: #ef4444;
+    --score-green: #22c55e;
+    --negative-red: #ef4444;
+    --assist-blue: #60a5fa;
+}
+
+body { font-family: 'Inter', sans-serif; background: #0f1117; color: #e2e8f0; }
+.font-mono { font-family: 'JetBrains Mono', monospace; }
+.fw-900 { font-weight: 900; }
+
+/* Player row */
+.player-row {
+    background: #1a1d28;
+    border: 1px solid #2d3148;
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    transition: border-color 0.2s;
+}
+.player-row:hover { border-color: #4a4f6a; }
+.player-row.on-court { border-left: 3px solid var(--home); }
+.player-row.on-court-opp { border-left: 3px solid var(--opponent); }
+.player-row.foul-warning { background: rgba(239, 68, 68, 0.08); }
+
+/* Stat buttons */
+.stat-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 4px 2px;
+    border: 1px solid #3d4260;
+    border-radius: 5px;
+    background: #1e2235;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    white-space: nowrap;
+}
+.stat-btn:hover { background: #2a2f4a; color: #fff; }
+.stat-btn:active { transform: scale(0.95); }
+.stat-btn.score { border-color: rgba(34,197,94,0.4); color: var(--score-green); }
+.stat-btn.score:hover { background: rgba(34,197,94,0.15); }
+.stat-btn.negative { border-color: rgba(239,68,68,0.3); color: var(--negative-red); }
+.stat-btn.negative:hover { background: rgba(239,68,68,0.1); }
+.stat-btn.assist { border-color: rgba(96,165,250,0.3); color: var(--assist-blue); }
+.stat-btn.assist:hover { background: rgba(96,165,250,0.1); }
+
+/* PBP */
+.pbp-entry {
+    font-size: 11px;
+    padding: 4px 6px;
+    border-bottom: 1px solid #1e2235;
+}
+.pbp-entry .pbp-time { color: #64748b; font-family: 'JetBrains Mono', monospace; }
+.pbp-entry .pbp-score { color: var(--score-green); }
+.pbp-entry .pbp-negative { color: var(--negative-red); }
+.pbp-entry .pbp-neutral { color: var(--assist-blue); }
+
+/* Quick stats */
+.q-stat { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #94a3b8; }
+
+/* Sub button */
+.sub-btn {
+    font-size: 9px; cursor: pointer; color: #64748b;
+    border: 1px solid #2d3148; border-radius: 4px; padding: 1px 6px;
+    background: transparent;
+}
+.sub-btn:hover { color: #fff; border-color: #4a4f6a; }
+
+/* Setup page player row */
+.opp-player-entry { background: #1a1d28; border: 1px solid #2d3148; border-radius: 8px; padding: 10px; margin-bottom: 8px; }
+
+/* Team stats footer */
+.team-stat-box { background: #1a1d28; border-radius: 4px; padding: 4px; }
+.team-stat-box .stat-val { font-weight: 700; font-size: 13px; }
+.team-stat-box .stat-lbl { font-size: 9px; color: #64748b; text-transform: uppercase; }
+.team-stat-box .stat-sub { font-size: 8px; color: #4a4f6a; }
+
+/* Debounce visual */
+.stat-btn.cooldown { opacity: 0.5; pointer-events: none; }

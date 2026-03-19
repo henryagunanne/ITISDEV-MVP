@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "test": "NODE_ENV=test jest --detectOpenHandles --runInBand",
-    "seed": "node scripts/seed.js"
+    "seed": "node scripts/seedAdmin.js"
   },
   "repository": {
     "type": "git",
@@ -23,6 +23,7 @@
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "connect-mongo": "^6.0.0",
+    "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "express-handlebars": "^8.0.6",

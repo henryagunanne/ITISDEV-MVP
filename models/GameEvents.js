@@ -6,9 +6,20 @@ const gameEventSchema = new mongoose.Schema({
         ref: "Game",
         required: true
     },
+    // For home team players (from Player collection)
     playerId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Player"
+    },
+    // For opponent players (embedded - NOT in Player collection)
+    opponentPlayer: {
+        jerseyNumber: { type: Number },
+        fullName: { type: String }
+    },
+    team: { 
+        type: String, 
+        enum: ['lasalle', 'opponent'], 
+        required: true 
     },
     period: {
         type: Number, // 1,2,3,4,5,6...
@@ -20,9 +31,10 @@ const gameEventSchema = new mongoose.Schema({
     eventType: {
         type: String,
         enum: [
-            "shot_made",
-            "shot_missed",
-            "free_throw",
+            "shot made",
+            "shot missed",
+            "free throw made",
+            "free throw missed",
             "offensive rebound",
             "defensive rebound",
             "assist",
@@ -35,7 +47,8 @@ const gameEventSchema = new mongoose.Schema({
     },
     shotType: {
         type: String,
-        enum: ["2PT", "3PT", "FT"]
+        enum: ["2PT", "3PT", "FT", ""],
+        default: ''
     },
     points: {
         type: Number,
@@ -44,6 +57,14 @@ const gameEventSchema = new mongoose.Schema({
     assistPlayerId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Player"
+    },
+    reversed: { 
+        type: Boolean, 
+        default: false 
+    },
+    createdAt: { 
+        type: Date, 
+        default: Date.now 
     }
 }, { timestamps: true });
 

@@ -1,50 +1,153 @@
 const Game = require("../models/Game");
 const Tournament = require('../models/Tournament');
+const GameEvent = require('../models/GameEvents');
+const GameStats = require('../models/GameStats');
+const Player = require('../models/Player');
+
+
+// Helper: get period key from period number 
+function periodKey(period) {
+    if (period <= 4) return `q${period}`;
+    return null; // overtime handled separately
+}
+
+// Helper: update GameStats for an event
+async function updateStatsForEvent(event, reverse = false) {
+    const d = reverse ? -1 : 1;
+    const query = { gameId: event.gameId };
+
+    if (event.team === 'lasalle') {
+        query.playerId = event.playerId;
+        query.team = 'lasalle';
+    } else {
+        query.opponentPlayerIndex = event.opponentPlayer?.jerseyNumber;
+        query.team = 'opponent';
+    }
+
+    let stats = await GameStats.findOne(query);
+    if (!stats) {
+        stats = new GameStats(query);
+    }
+
+    // Determine which period to update
+    const pk = periodKey(event.period);
+    let periodObj;
+    if (pk) {
+        periodObj = stats.periodStats[pk];
+    } else {
+        const otIndex = event.period - 5;
+        while (stats.periodStats.overtimes.length <= otIndex) {
+            stats.periodStats.overtimes.push({});
+        }
+        periodObj = stats.periodStats.overtimes[otIndex];
+    }
+
+    // Apply stat changes based on event type
+    switch (event.eventType) {
+        case 'shot made':
+            if (event.shotType === '2PT') {
+                periodObj.fieldGoalsMade += d;
+                periodObj.fieldGoalsAttempted += d;
+                periodObj.points += 2 * d;
+            } else if (event.shotType === '3PT') {
+                periodObj.threePointersMade += d;
+                periodObj.threePointersAttempted += d;
+                periodObj.points += 3 * d;
+            }
+            break;
+        case 'shot missed':
+            if (event.shotType === '2PT') periodObj.fieldGoalsAttempted += d;
+            else if (event.shotType === '3PT') periodObj.threePointersAttempted += d;
+            break;
+        case 'free throw made':
+            periodObj.freeThrowsMade += d;
+            periodObj.freeThrowsAttempted += d;
+            periodObj.points += d;
+            break;
+        case 'free throw missed':
+            periodObj.freeThrowsAttempted += d;
+            break;
+        case 'offensive rebound': periodObj.offensiveRebounds += d; break;
+        case 'defensive rebound': periodObj.defensiveRebounds += d; break;
+        case 'assist': periodObj.assists += d; break;
+        case 'steal': periodObj.steals += d; break;
+        case 'block': periodObj.blocks += d; break;
+        case 'turnover': periodObj.turnovers += d; break;
+        case 'foul': periodObj.fouls += d; break;
+    }
+
+    stats.markModified('periodStats');
+    await stats.save();
+
+    // Update quarter scores on Game
+    if (event.points && event.points !== 0) {
+        const game = await Game.findById(event.gameId);
+        if (game) {
+            const scoreField = event.team === 'lasalle' ? 'team' : 'opponent';
+            if (pk) {
+                game.quarterScores[pk][scoreField] += event.points * d;
+            } else {
+                const otIdx = event.period - 5;
+                while (game.quarterScores.overtimes.length <= otIdx) {
+                    game.quarterScores.overtimes.push({ team: 0, opponent: 0 });
+                }
+                game.quarterScores.overtimes[otIdx][scoreField] += event.points * d;
+            }
+            game.calculateFinalScore();
+            game.markModified('quarterScores');
+            await game.save();
+        }
+    }
+
+    return stats;
+}
+
 
 // Create a new game
 exports.createGame = async (req, res) => {
-    try {
+    try { 
+        const { opponent, opponentPlayers, tournament, venue, gameDate } = req.body;
+        if (!opponent) return res.status(400).json({ error: 'Opponent name required' });
+        if (!opponentPlayers || opponentPlayers.length < 5) {
+            return res.status(400).json({ error: 'Minimum 5 opponent players required' });
+        }
+        // Validate unique jersey numbers
+        const jerseys = opponentPlayers.map(p => p.jerseyNumber);
+        if (new Set(jerseys).size !== jerseys.length) {
+            return res.status(400).json({ error: 'Opponent jersey numbers must be unique' });
+        }
+
         const game = new Game({
-            gameDate: req.body.gameDate,
-            opponent: req.body.opponent,
-            tournament: req.body.tournament,
-            venue: req.body.venue,
-            startTime: req.body.startTime,
-            quarterScores: req.body.quarterScores,
-            teamScore: req.body.teamScore,
-            opponentScore: req.body.opponentScore,
-            status: req.body.status,
-            createdBy: req.session.user.id  
+            opponent,
+            opponentPlayers,
+            tournament,
+            venue: venue || 'TBD',
+            gameDate: gameDate || new Date(),
+            startTime: new Date(),
+            teamScore: 0,
+            opponentScore: 0,
+            status: 'NOT_STARTED'
         });
-
-         // Validate required fields
-        if (!game.gameDate || !game.opponent || !game.tournament || !game.venue || !game.startTime) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Missing required fields: gameDate, opponent, tournament, startTime, and venue are required." 
-            });
-        }
-
-        // Calculate final score if quarterScores provided
-        if (game.quarterScores) {
-            game.calculateFinalScore();
-        }
-
-        // Determine result automatically
-        let result;
-
-        if (game.teamScore > game.opponentScore) {
-            result = "Win";
-        } else if (game.teamScore < game.opponentScore) {
-            result = "Loss";
-        } else if (game.teamScore === game.opponentScore) {
-            result = null;
-        }
-
-        game.result = result;
-
         await game.save();
-        await game.populate('createdBy', 'username email').populate('tournament');
+
+        // Create GameStats entries for all home players
+        const homePlayers = await Player.find({ status: 'Active' });
+        for (const p of homePlayers) {
+            const gs = new GameStats({ gameId: game._id, playerId: p._id, team: 'lasalle' });
+            await gs.save();
+            game.players.push(gs._id);
+        }
+        // Create GameStats entries for opponent players
+        for (const op of opponentPlayers) {
+            const gs = new GameStats({
+                gameId: game._id,
+                opponentPlayerIndex: op.jerseyNumber,
+                team: 'opponent'
+            });
+            await gs.save();
+        }
+        await game.save();
+
         res.status(201).json({ 
             success: true, 
             data: game 
@@ -67,8 +170,8 @@ exports.getGames = async (req, res) => {
             filter.tournament = req.query.tournament;
         }
         const games = await Game.find(filter)
-            .populate('createdBy', 'username email')
-            .populate('tournament').sort({ gameDate: -1 });
+            .populate('createdBy', 'username email', {lean: true})
+            .populate('tournament', {lean: true}).sort({ gameDate: -1 }).lean();
             
         res.status(200).json({
             success: true,
@@ -87,7 +190,7 @@ exports.getGames = async (req, res) => {
 // Get Game by ID - returns detailed information about a specific game, including tournament details
 exports.getGameById = async (req, res) => {
     try {
-        const gameId = req.params.id; // Get game ID from URL parameters
+        const gameId = req.params.gameId; // Get game ID from URL parameters
         const game = await Game.findById(gameId).lean();
 
         if (!game) {
@@ -97,10 +200,7 @@ exports.getGameById = async (req, res) => {
             });
         }
 
-        res.status(200).json({
-            success: true,
-            data: game
-        });
+        res.status(200).json({game});
     } catch (error) {
         res.status(500).json({
             success: false,
@@ -109,6 +209,139 @@ exports.getGameById = async (req, res) => {
         });
     }
 };
+
+// update a game status/period
+exports.updateGameStatus = async (req, res) => {
+    try {
+        const updates = {};
+        if (req.body.status) updates.status = req.body.status;
+        if (req.body.currentPeriod) updates.currentPeriod = req.body.currentPeriod;
+        if (req.body.gameClock) updates.gameClock = req.body.gameClock;
+        const game = await Game.findByIdAndUpdate(req.params.gameId, updates, { returnDocument: 'after' });
+        res.json(game);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+};
+
+//  record a game event
+exports.recordGameEvent = async (req, res) => {
+    try {
+        const { team, playerId, opponentPlayer, eventType, shotType, gameClock } = req.body;
+        const game = await Game.findById(req.params.gameId);
+        if (!game) return res.status(404).json({ error: 'Game not found' });
+
+        let points = 0;
+        if (eventType === 'shot made') {
+            if (shotType === '2PT') points = 2;
+            else if (shotType === '3PT') points = 3;
+        } else if (eventType === 'free throw made') {
+            points = 1;
+        }
+
+        const event = new GameEvent({
+            gameId: game._id,
+            team,
+            playerId: team === 'lasalle' ? playerId : null,
+            opponentPlayer: team === 'opponent' ? opponentPlayer : undefined,
+            period: game.currentPeriod,
+            gameClock: gameClock || game.gameClock,
+            eventType,
+            shotType: shotType || '',
+            points,
+            reversed: false
+        });
+        await event.save();
+
+        game.events.push(event._id);
+        await game.save();
+
+        // Update stats
+        await updateStatsForEvent(event);
+
+        // Return updated game state
+        const updatedGame = await Game.findById(game._id);
+        const stats = await GameStats.find({ gameId: game._id });
+        const events = await GameEvent.find({ gameId: game._id, reversed: false })
+            .sort('-createdAt').limit(50).populate('playerId', {lean: true}).lean();
+
+        events.slice(-50)
+        res.json({ game: updatedGame, stats, events });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+};
+
+// undo last game event
+exports.undoLastEvent = async (req, res) => {
+    try {
+        const lastEvent = await GameEvent.findOne({ gameId: req.params.gameId, reversed: false })
+            .sort('-createdAt');
+        if (!lastEvent) return res.status(404).json({ error: 'No events to undo' });
+
+        lastEvent.reversed = true;
+        await lastEvent.save();
+
+        // Reverse stats
+        await updateStatsForEvent(lastEvent, true);
+
+        const game = await Game.findById(req.params.gameId);
+        const stats = await GameStats.find({ gameId: game._id });
+        const events = await GameEvent.find({ gameId: game._id, reversed: false })
+            .sort('-createdAt').limit(50).populate('playerId', {lean: true}).lean();
+
+        events.slice(-50)
+        res.json({ game, stats, events });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+};
+
+// add overtime
+exports.addOvertime = async (req, res) => {
+    try {
+        const game = await Game.findById(req.params.gameId);
+
+        if (!game) {
+            return res.status(404).json({ 
+                error: 'Game not found' 
+            })
+        };
+
+        game.quarterScores.overtimes.push({ team: 0, opponent: 0 });
+        game.currentPeriod = 5 + game.quarterScores.overtimes.length - 1;
+        game.gameClock = '05:00';
+        game.status = 'PAUSED';
+        game.markModified('quarterScores');
+
+        await game.save();
+        res.json(game);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+};
+
+// get stats for a game
+exports.loadStats = async (req, res) => {
+    try {
+        const stats = await GameStats.find({ gameId: req.params.gameId }).populate('playerId', {lean: true}).lean();
+        res.json(stats);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// get events for a game
+exports.loadEvents = async (req, res) => {
+    try {
+        const events = await GameEvent.find({ gameId: req.params.gameId, reversed: false })
+            .sort({createdAt: -1}).limit(100).populate('playerId', {lean: true}).lean();
+        res.json(events);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
 
 // Get Games by Tournament - returns all games for a specific tournament, sorted by date (newest first)
 exports.getGamesByTournament = async (req, res) => {
@@ -592,7 +825,7 @@ exports.updateGame = async (req, res) => {
         }
 
         const updatedGame = await game.save();
-        await game.populate('createdBy', 'username email').populate('tournament');
+        await game.populate('createdBy', 'username email', {lean: true}).populate('tournament', {lean: true});
 
         res.status(200).json({
             success: true,

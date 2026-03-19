@@ -118,12 +118,12 @@ exports.getPlayerById = async (req, res) => {
 // Get Active Players
 exports.getActiveRoster = async (req, res) => {
     try {
-        const players = await Player.find({ status: "Active" }).sort({ jerseyNumber: 1 });
+        const players = await Player.find({ status: "Active" }).sort({ jerseyNumber: 1 }).lean();;
 
         res.status(200).json({
             success: true,
             rosterSize: players.length,
-            data: players
+            players: players
         });
     } catch (error) {
         console.error("Get Active Players Error:", error);

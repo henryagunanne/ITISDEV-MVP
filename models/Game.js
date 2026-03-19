@@ -8,6 +8,11 @@
 
 const mongoose = require('mongoose');
 
+const opponentPlayerSchema = new mongoose.Schema({
+    jerseyNumber: { type: Number, required: true },
+    fullName: { type: String, required: true, trim: true },
+    position: { type: String, default: '' }
+}, { _id: false });
 
 // Define the schema for a Game
 const gameSchema = new mongoose.Schema({
@@ -20,19 +25,33 @@ const gameSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
+    opponentPlayers: { 
+        type: [opponentPlayerSchema], 
+        default: [] 
+    },
     tournament: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Tournament",
-        required: true
+        ref: "Tournament"
     },
+    players: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'GameStats'
+    }],
     venue: {
         type: String,
-        required: true,
+        default: 'TBD',
         trim: true
     },
     startTime: {
-        type: Date,
-        required: true
+        type: Date
+    },
+    currentPeriod: { 
+        type: Number, 
+        default: 1 
+    },
+    gameClock: { 
+        type: String, 
+        default: '10:00' 
     },
     quarterScores: {
         q1: {
@@ -73,12 +92,16 @@ const gameSchema = new mongoose.Schema({
     },
     status: {
       type: String,
-      enum: ["Scheduled", "Completed", "Cancelled"],
+      enum: ['NOT_STARTED', 'PLAYING', 'PAUSED', 'ENDED'],
+      default: 'NOT_STARTED'
     },
+    events: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'GameEvent'
+    }],
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
+        ref: 'User'
     }, // reference to User
     createdAt: {
         type: Date,
@@ -99,32 +122,31 @@ gameSchema.pre('save', function () {
 // Automatically populate user reference
 gameSchema.pre('find', function () {
     this.populate('createdBy', 'username email')
-    .populate('tournament'); // Populate all fields in the tournament schema
+    .populate('tournament') // Populate all fields in the tournament schema
+    .populate('events')
+    .populate('players')
     //next();
 });
 
 // Method to calculate final score based on quarter scores and overtimes
 gameSchema.methods.calculateFinalScore = function () {
+    let teamTotal = (this.quarterScores.q1?.team || 0) + 
+                    (this.quarterScores.q2?.team || 0) +
+                    (this.quarterScores.q3?.team || 0) + 
+                    (this.quarterScores.q4?.team || 0);
 
-    let teamTotal =
-        this.quarterScores.q1.team +
-        this.quarterScores.q2.team +
-        this.quarterScores.q3.team +
-        this.quarterScores.q4.team;
-
-    let opponentTotal =
-        this.quarterScores.q1.opponent +
-        this.quarterScores.q2.opponent +
-        this.quarterScores.q3.opponent +
-        this.quarterScores.q4.opponent;
-
-    this.quarterScores.overtimes.forEach(ot => {
-        teamTotal += ot.team;
-        opponentTotal += ot.opponent;
+    let oppTotal = (this.quarterScores.q1?.opponent || 0) + 
+                    (this.quarterScores.q2?.opponent || 0) +
+                    (this.quarterScores.q3?.opponent || 0) + 
+                    (this.quarterScores.q4?.opponent || 0);
+                    
+    (this.quarterScores.overtimes || []).forEach(ot => { 
+        teamTotal += ot.team; 
+        oppTotal += ot.opponent; 
     });
 
     this.teamScore = teamTotal;
-    this.opponentScore = opponentTotal;
+    this.opponentScore = oppTotal;
 };
 
 

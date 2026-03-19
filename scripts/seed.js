@@ -56,43 +56,56 @@ const seed = async () => {
   ]);
   console.log(`Created ${tournaments.length} tournaments.`);
 
+
+  // create opponent players
+  const generateOpponentPlayers = () => ([
+    { jerseyNumber: 4, fullName: "Juan Dela Cruz", position: "PG" },
+    { jerseyNumber: 7, fullName: "Mark Santos", position: "SG" },
+    { jerseyNumber: 12, fullName: "Leo Reyes", position: "SF" },
+    { jerseyNumber: 15, fullName: "Paul Garcia", position: "PF" },
+    { jerseyNumber: 22, fullName: "Chris Lim", position: "C" },
+    { jerseyNumber: 30, fullName: "Kevin Tan", position: "SG" },
+    { jerseyNumber: 9, fullName: "Andre Cruz", position: "PG" }
+  ]);
+  
+
   // Create Games (updated to match new Game schema with tournament ref, quarterScores, startTime)
   const games = await Game.create([
     {
-      gameDate: new Date('2025-09-07'), opponent: 'Ateneo Blue Eagles', tournament: tournaments[0]._id, venue: 'MOA Arena', startTime: new Date('2025-09-07T14:00:00'),
+      gameDate: new Date('2025-09-07'), opponent: 'Ateneo Blue Eagles', opponentPlayers: generateOpponentPlayers(), tournament: tournaments[0]._id, venue: 'MOA Arena', startTime: new Date('2025-09-07T14:00:00'),
       quarterScores: { q1: { team: 22, opponent: 18 }, q2: { team: 19, opponent: 20 }, q3: { team: 20, opponent: 15 }, q4: { team: 17, opponent: 18 }, overtimes: [] },
-      teamScore: 78, opponentScore: 71, result: 'Win', status: 'Completed', createdBy: users[0]._id
+      teamScore: 78, opponentScore: 71, result: 'Win', status: 'ENDED', createdBy: users[0]._id
     },
     {
-      gameDate: new Date('2025-09-14'), opponent: 'UP Fighting Maroons', tournament: tournaments[0]._id, venue: 'Smart Araneta Coliseum', startTime: new Date('2025-09-14T16:00:00'),
+      gameDate: new Date('2025-09-14'), opponent: 'UP Fighting Maroons', opponentPlayers: generateOpponentPlayers(), tournament: tournaments[0]._id, venue: 'Smart Araneta Coliseum', startTime: new Date('2025-09-14T16:00:00'),
       quarterScores: { q1: { team: 24, opponent: 20 }, q2: { team: 18, opponent: 22 }, q3: { team: 22, opponent: 17 }, q4: { team: 21, opponent: 20 }, overtimes: [] },
-      teamScore: 85, opponentScore: 79, result: 'Win', status: 'Completed', createdBy: users[0]._id
+      teamScore: 85, opponentScore: 79, result: 'Win', status: 'ENDED', createdBy: users[0]._id
     },
     {
-      gameDate: new Date('2025-09-21'), opponent: 'UST Growling Tigers', tournament: tournaments[0]._id, venue: 'MOA Arena', startTime: new Date('2025-09-21T14:00:00'),
+      gameDate: new Date('2025-09-21'), opponent: 'UST Growling Tigers', opponentPlayers: generateOpponentPlayers(), tournament: tournaments[0]._id, venue: 'MOA Arena', startTime: new Date('2025-09-21T14:00:00'),
       quarterScores: { q1: { team: 15, opponent: 20 }, q2: { team: 18, opponent: 17 }, q3: { team: 16, opponent: 19 }, q4: { team: 19, opponent: 16 }, overtimes: [] },
-      teamScore: 68, opponentScore: 72, result: 'Loss', status: 'Completed', createdBy: users[0]._id
+      teamScore: 68, opponentScore: 72, result: 'Loss', status: 'ENDED', createdBy: users[0]._id
     },
     {
-      gameDate: new Date('2025-09-28'), opponent: 'NU Bulldogs', tournament: tournaments[0]._id, venue: 'Philsports Arena', startTime: new Date('2025-09-28T16:00:00'),
+      gameDate: new Date('2025-09-28'), opponent: 'NU Bulldogs', opponentPlayers: generateOpponentPlayers(), tournament: tournaments[0]._id, venue: 'Philsports Arena', startTime: new Date('2025-09-28T16:00:00'),
       quarterScores: { q1: { team: 25, opponent: 18 }, q2: { team: 22, opponent: 21 }, q3: { team: 24, opponent: 20 }, q4: { team: 21, opponent: 21 }, overtimes: [] },
-      teamScore: 92, opponentScore: 80, result: 'Win', status: 'Completed', createdBy: users[0]._id
+      teamScore: 92, opponentScore: 80, result: 'Win', status: 'ENDED', createdBy: users[0]._id
     },
     {
-      gameDate: new Date('2025-10-05'), opponent: 'FEU Tamaraws', tournament: tournaments[0]._id, venue: 'MOA Arena', startTime: new Date('2025-10-05T14:00:00'),
+      gameDate: new Date('2025-10-05'), opponent: 'FEU Tamaraws', opponentPlayers: generateOpponentPlayers(), tournament: tournaments[0]._id, venue: 'MOA Arena', startTime: new Date('2025-10-05T14:00:00'),
       quarterScores: { q1: { team: 0, opponent: 0 }, q2: { team: 0, opponent: 0 }, q3: { team: 0, opponent: 0 }, q4: { team: 0, opponent: 0 }, overtimes: [] },
-      teamScore: 0, opponentScore: 0, status: 'Scheduled', createdBy: users[0]._id
+      teamScore: 0, opponentScore: 0, status: 'NOT_STARTED', createdBy: users[0]._id
     },
     {
-      gameDate: new Date('2025-08-10'), opponent: 'Letran Knights', tournament: tournaments[1]._id, venue: 'Filoil EcoOil Centre', startTime: new Date('2025-08-10T15:00:00'),
+      gameDate: new Date('2025-08-10'), opponent: 'Letran Knights', opponentPlayers: generateOpponentPlayers(), tournament: tournaments[1]._id, venue: 'Filoil EcoOil Centre', startTime: new Date('2025-08-10T15:00:00'),
       quarterScores: { q1: { team: 24, opponent: 19 }, q2: { team: 20, opponent: 18 }, q3: { team: 22, opponent: 20 }, q4: { team: 22, opponent: 18 }, overtimes: [] },
-      teamScore: 88, opponentScore: 75, result: 'Win', status: 'Completed', createdBy: users[0]._id
+      teamScore: 88, opponentScore: 75, result: 'Win', status: 'ENDED', createdBy: users[0]._id
     }
   ]);
   console.log(`Created ${games.length} games.`);
 
   // Create GameStats with periodStats structure
-  const completedGames = games.filter(g => g.status === 'Completed');
+  const completedGames = games.filter(g => g.status === 'ENDED');
   const activePlayers = players.filter(p => p.status === 'Active');
   const statsData = [];
 

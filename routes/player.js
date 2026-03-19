@@ -13,9 +13,6 @@ router.post('/create', authorize('Admin', 'Coach'), playerController.createPlaye
 // Get all players
 router.get('/all-players', playerController.getAllPlayers);
 
-// Get a specific player by ID
-router.get('/:id', playerController.getPlayerById);
-
 // Get Active Players
 router.get('/active', playerController.getActiveRoster);
 
@@ -24,6 +21,9 @@ router.get('/injured', playerController.getInjuredPlayers);
 
 // Get inactive players
 router.get('/inactive', playerController.getInactivePlayers);
+
+// Get a specific player by ID
+router.get('/:id', playerController.getPlayerById);
 
 // Get players by position
 router.get('/position/:position', playerController.getPlayersByPosition);

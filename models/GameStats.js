@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 // Quarter stat schema
 const periodStatSchema = new mongoose.Schema({
     minutesPlayed: { type: Number, default: 0 },
+    isOnCourt: { type: Boolean, default: false },
 
     points: { type: Number, default: 0 },
 
@@ -45,7 +46,17 @@ const gameStatsSchema = new mongoose.Schema({
     playerId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Player',
-        required: true
+        default: null
+    },
+    opponentPlayerIndex: { 
+        type: Number, 
+        default: null 
+    },
+
+    team: { 
+        type: String, 
+        enum: ['lasalle', 'opponent'], 
+        required: true 
     },
 
     // Stats per quarter
@@ -117,18 +128,25 @@ gameStatsSchema.pre('save', function() {
 
     const totals = {};  // Initialize totals object
 
-    // Sum up stats across all periods
-    periods.forEach(period => {
-        for (let stat in period) {
-            if (!totals[stat]) {
-                totals[stat] = 0;
-            }
-            totals[stat] += period[stat] || 0;  // Add current period stat to total, defaulting to 0 if undefined
-        }
+    const statFields = [
+        'minutesPlayed', 'points', 'fieldGoalsMade', 'fieldGoalsAttempted',
+        'threePointersMade', 'threePointersAttempted', 'freeThrowsMade', 'freeThrowsAttempted',
+        'offensiveRebounds', 'defensiveRebounds', 'assists', 'steals', 'blocks',
+        'turnovers', 'fouls', 'plusMinus'
+    ];
 
+    statFields.forEach(field => { 
+        totals[field] = 0; 
     });
 
-    // Cache totals for quick access (optional)
+    periods.forEach(period => { 
+        if (period) {
+            statFields.forEach(field => { 
+                totals[field] += period[field] || 0; 
+            }); 
+        }
+    });
+
     this.totals = totals;
 
     this.updatedAt = Date.now();    // Update timestamp
@@ -136,14 +154,22 @@ gameStatsSchema.pre('save', function() {
     //next();
 });
 
+
 // Automatically populate game and player references
 gameStatsSchema.pre(/^find/, function () {
     this.populate('gameId').populate('playerId');
     //next();
 });
 
-// Prevent duplicate stats for same player in same game
-gameStatsSchema.index({ gameId: 1, playerId: 1 }, { unique: true });
+// Two separate unique indexes: one for home (by playerId), one for opponent (by opponentPlayerIndex)
+gameStatsSchema.index(
+    { gameId: 1, playerId: 1 },
+    { unique: true, partialFilterExpression: { team: 'lasalle' } }
+);
+gameStatsSchema.index(
+    { gameId: 1, opponentPlayerIndex: 1 },
+    { unique: true, partialFilterExpression: { team: 'opponent' } }
+);
 
 // Create and export the GameStats model
 module.exports = mongoose.model('GameStats', gameStatsSchema);

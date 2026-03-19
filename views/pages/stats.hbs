@@ -1,0 +1,83 @@
+
+<main class="col-md-10 ms-auto px-4 py-4">
+<!-- ==================== GAME PAGE ==================== -->
+<div id="game-page">
+
+    <!-- HEADER / SCOREBOARD -->
+    <nav class="navbar navbar-dark bg-dark border-bottom border-secondary">
+        <div class="container-fluid">
+            <div class="d-flex align-items-center gap-3 w-100 justify-content-between flex-wrap">
+                <!-- Home -->
+                <div class="text-center">
+                    <div class="small text-white fw-bold" id="hdr-home-name">LASALLE</div>
+                    <div class="display-5 fw-900 font-mono text-white" id="hdr-home-score">0</div>
+                </div>
+
+                <!-- Center -->
+                <div class="text-center">
+                    <div class="badge bg-warning text-dark fw-bold mb-1" id="hdr-period">Q1</div>
+                    <div class="display-6 fw-900 font-mono" id="hdr-clock">{{gameClock}}</div>
+                    <div class="btn-group btn-group-sm mt-1" id="game-controls">
+                        <button class="btn btn-outline-success text-white btn-sm" id="ctrl-start">START</button>
+                        <button class="btn btn-outline-warning btn-sm d-none" id="ctrl-pause">PAUSE</button>
+                        <button class="btn btn-outline-success btn-sm d-none" id="ctrl-resume">RESUME</button>
+                        <button class="btn btn-outline-info btn-sm" id="ctrl-next-q">NEXT Q</button>
+                        <button class="btn btn-outline-secondary btn-sm" id="ctrl-ot">+OT</button>
+                        <button class="btn btn-outline-danger btn-sm" id="ctrl-end">END</button>
+                    </div>
+                </div>
+
+                <!-- Away -->
+                <div class="text-center">
+                    <div class="small text-warning fw-bold" id="hdr-opp-name">OPPONENT</div>
+                    <div class="display-5 fw-900 font-mono text-white" id="hdr-opp-score">0</div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid py-3">
+        <div class="row g-3">
+            <!-- HOME TEAM PANEL -->
+            <div class="col-lg-5">
+                <div class="card bg-dark border-success border-opacity-50">
+                    <div class="card-header bg-success bg-opacity-10 d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-bold text-white">LA SALLE</h5>
+                        <span class="badge bg-success font-mono" id="home-total-pts">0 PTS</span>
+                    </div>
+                    <div class="card-body p-2" id="home-players-panel"></div>
+                    <div class="card-footer border-success p-2">
+                        <div id="home-team-stats" class="row g-1 text-center small text-white font-mono"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PLAY BY PLAY -->
+            <div class="col-lg-2">
+                <div class="card bg-dark border-success h-100">
+                    <div class="card-header bg-dark d-flex justify-content-between align-items-center border-secondary">
+                        <h6 class="mb-0 fw-bold text-uppercase small text-white">Play-by-Play</h6>
+                        <button class="btn btn-outline-warning btn-sm py-0 px-2" id="undo-btn" title="Undo (Ctrl+Z)">↩ UNDO</button>
+                    </div>
+                    <div class="card-body p-1 overflow-auto" id="pbp-feed" style="max-height:70vh;"></div>
+                </div>
+            </div>
+
+            <!-- OPPONENT TEAM PANEL -->
+            <div class="col-lg-5">
+                <div class="card bg-dark border-danger border-opacity-50">
+                    <div class="card-header bg-danger bg-opacity-10 d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-bold text-danger" id="opp-panel-name">OPPONENT</h5>
+                        <span class="badge bg-danger font-mono" id="opp-total-pts">0 PTS</span>
+                    </div>
+                    <div class="card-body p-2" id="opp-players-panel"></div>
+                    <div class="card-footer border-secondary p-2">
+                        <div id="opp-team-stats" class="row g-1 text-center small font-mono"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</main>
+
