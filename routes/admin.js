@@ -26,7 +26,7 @@ router.get("/statistics", (req, res) => {
 router.get('/start-game', async (req, res) => {
     const tournaments = await Tournament.find().sort({ createdAt: -1 }).lean();
 
-    res.render("pages/opp-player", {
+    res.render("pages/setup", {
         title: "Create Game",
         tournaments: tournaments
     });

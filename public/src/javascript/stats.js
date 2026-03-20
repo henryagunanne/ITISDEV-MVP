@@ -180,7 +180,7 @@ async function fetchGameDetails() {
 
 function initGameUI() {
     $('#hdr-home-name').text('LA SALLE');
-    $('#hdr-opp-name').text(gameData.opponent);
+    $('#hdr-opp-name').text(gameData.opponent.toUpperCase());
     $('#opp-panel-name').text(gameData.opponent.toUpperCase());
 
     renderHomePlayers();
@@ -229,7 +229,7 @@ function playerRowHTML(playerId, jersey, name, position, team, onCourt, photo) {
             <div class="d-flex align-items-center gap-2">
                 <span class="fw-bold text-white font-mono player-pts" data-key="${team}-${jersey}-pts">0<span class="text-white ms-1" style="font-size:9px">PTS</span></span>
                 <span class="font-mono text-white player-fouls" data-key="${team}-${jersey}-fouls" style="font-size:10px">0F</span>
-                <button class="sub-btn" onclick="toggleOnCourt(this)">SUB</button>
+                <button class="sub-btn" onclick="toggleOnCourt(this); recordStat(this, 'substitution')">SUB</button>
             </div>
         </div>
         <div class="q-stat mb-1">
@@ -414,9 +414,10 @@ function renderEvents(events) {
         html = '<div class="text-muted  text-white text-center py-4 small">No events yet</div>';
     } else {
         events.forEach(e => {
+            const fullName = e.playerId?.firstName + " " + e.playerId?.lastName;
             const isHome = e.team === 'lasalle';
             const jersey = isHome ? (e.playerId?.jerseyNumber || '?') : e.opponentPlayer?.jerseyNumber || '?';
-            const name = isHome ? (e.playerId?.fullName || 'Unknown') : (e.opponentPlayer?.fullName || 'Unknown');
+            const name = isHome ? (fullName || 'Unknown') : (e.opponentPlayer?.fullName || 'Unknown');
             const teamTag = isHome ? '' : ' (OPP)';
             let colorClass = 'pbp-neutral';
             if (['shot made', 'free throw made'].includes(e.eventType)) colorClass = 'pbp-score';
@@ -429,7 +430,7 @@ function renderEvents(events) {
                 <span class="pbp-time">${e.gameClock || '--:--'}</span>
                 <span class="badge ${isHome ? 'bg-success' : 'bg-danger'} me-1" style="font-size:9px">Q${e.period}</span>
                 <strong class="${isHome ? 'text-success' : 'text-danger'}">#${jersey}</strong>
-                <span>${name}${teamTag}</span>
+                <span class="pbp-time">${name}${teamTag}</span>
                 <span class="${colorClass}">${desc}</span>
                 ${e.points > 0 ? `<span class="pbp-score float-end fw-bold">+${e.points}</span>` : ''}
             </div>`;

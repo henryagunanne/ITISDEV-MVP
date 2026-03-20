@@ -6,7 +6,7 @@
     --assist-blue: #60a5fa;
 }
 
-body { font-family: 'Inter', sans-serif; background: #0f1117; color: #e2e8f0; }
+body { font-family: 'Inter', sans-serif; background: #ffffff; color: #e2e8f0; }
 .font-mono { font-family: 'JetBrains Mono', monospace; }
 .fw-900 { font-weight: 900; }
 
@@ -47,7 +47,7 @@ body { font-family: 'Inter', sans-serif; background: #0f1117; color: #e2e8f0; }
 .stat-btn.negative:hover { background: rgba(239,68,68,0.1); }
 .stat-btn.assist { border-color: rgba(96,165,250,0.3); color: var(--assist-blue); }
 .stat-btn.assist:hover { background: rgba(96,165,250,0.1); }
-
+ 
 /* PBP */
 .pbp-entry {
     font-size: 11px;

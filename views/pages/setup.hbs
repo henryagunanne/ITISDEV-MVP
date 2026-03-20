@@ -1,10 +1,16 @@
+<link rel="stylesheet" href="/src/css/stats.css">
+
 <main class="col-md-10 ms-auto px-4 py-4">
 <!-- ==================== SETUP PAGE ==================== -->
 
 <div id="setup-page">
     <div class="container py-5">
+        
         <div class="text-center mb-5">
-            <h1 class="fw-900 display-5">STATISTICS <span class="text-warning">SYSTEM</span></h1>
+            <button onclick=window.location.href="/gameStats" class="btn btn-outline-secondary btn-sm position-absolute" style="top: 90px; left: 250px;">
+                &larr; Back
+            </button>
+            <h1 class="fw-900 display-5 text-success">STATISTICS <span class="text-warning">SYSTEM</span></h1>
             <p class="text-muted">Pre-Game Setup — Enter opponent roster to begin</p>
         </div>
 
@@ -66,3 +72,6 @@
     </div>
 </div>
 </main>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="/src/javascript/stats.js"></script>

@@ -52,12 +52,17 @@ async function updateStatsForEvent(event, reverse = false) {
             } else if (event.shotType === '3PT') {
                 periodObj.threePointersMade += d;
                 periodObj.threePointersAttempted += d;
+                periodObj.fieldGoalsMade += d;
+                periodObj.fieldGoalsAttempted += d;
                 periodObj.points += 3 * d;
             }
             break;
         case 'shot missed':
             if (event.shotType === '2PT') periodObj.fieldGoalsAttempted += d;
-            else if (event.shotType === '3PT') periodObj.threePointersAttempted += d;
+            else if (event.shotType === '3PT') {
+                periodObj.threePointersAttempted += d;
+                periodObj.fieldGoalsAttempted += d;
+            }
             break;
         case 'free throw made':
             periodObj.freeThrowsMade += d;
