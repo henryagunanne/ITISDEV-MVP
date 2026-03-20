@@ -42,6 +42,17 @@ router.get('/players', isAuthenticated, async (req, res) => {
   }
 });
 
+// Render statistics page
+router.get('/gameStats', isAuthenticated, async (req, res) => {
+    const game = await Game.find({ status: 'ENDED' }).sort('-gameDate').lean();
+    if (!game) res.status(400);
+
+    res.render('pages/statistics', {
+      title: 'Team Statistics Summary',
+      game
+    });
+});
+
 // Player profile page
 router.get('/players/:id', isAuthenticated, async (req, res) => {
   try {

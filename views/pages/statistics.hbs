@@ -1,0 +1,85 @@
+<link rel="stylesheet" href="/src/css/statistics.css">
+
+<main class="col-md-10 ms-auto px-4 py-4">
+    <div class="container-fluid py-3">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold text-success">Statistics</h4>
+
+        <select id="game-select" class="form-select w-auto">
+            <option value="">Select Game</option>
+        </select>
+    </div>
+
+    <!-- TEAM SUMMARY -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h6 class="text-success fw-bold">LA SALLE</h6>
+                    <div class="row text-center">
+                        <div class="col"><h5 id="home-pts">0</h5><small>PTS</small></div>
+                        <div class="col"><h5 id="home-fg">0%</h5><small>FG%</small></div>
+                        <div class="col"><h5 id="home-reb">0</h5><small>REB</small></div>
+                        <div class="col"><h5 id="home-ast">0</h5><small>AST</small></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h6 class="text-danger fw-bold">OPPONENT</h6>
+                    <div class="row text-center">
+                        <div class="col"><h5 id="opp-pts">0</h5><small>PTS</small></div>
+                        <div class="col"><h5 id="opp-fg">0%</h5><small>FG%</small></div>
+                        <div class="col"><h5 id="opp-reb">0</h5><small>REB</small></div>
+                        <div class="col"><h5 id="opp-ast">0</h5><small>AST</small></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PLAYER STATS TABLE -->
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <h6 class="fw-bold mb-3">Player Statistics</h6>
+
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>PTS</th>
+                            <th>FG</th>
+                            <th>3PT</th>
+                            <th>FT</th>
+                            <th>REB</th>
+                            <th>AST</th>
+                            <th>STL</th>
+                            <th>BLK</th>
+                            <th>TO</th>
+                            <th>PF</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stats-table-body">
+                        <tr>
+                            <td colspan="12" class="text-center text-muted">
+                                Select a game to view stats
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+    </div>
+</main>
+
+<script src="/src/javascript/statistics.js"></script>

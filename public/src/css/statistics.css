@@ -1,0 +1,16 @@
+.card {
+    border-radius: 12px;
+}
+
+.table th {
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+.table td {
+    font-size: 13px;
+}
+
+h4 {
+    letter-spacing: 0.5px;
+}
