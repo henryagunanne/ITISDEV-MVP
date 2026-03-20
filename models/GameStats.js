@@ -155,12 +155,6 @@ gameStatsSchema.pre('save', function() {
 });
 
 
-// Automatically populate game and player references
-gameStatsSchema.pre(/^find/, function () {
-    this.populate('gameId').populate('playerId');
-    //next();
-});
-
 // Two separate unique indexes: one for home (by playerId), one for opponent (by opponentPlayerIndex)
 gameStatsSchema.index(
     { gameId: 1, playerId: 1 },

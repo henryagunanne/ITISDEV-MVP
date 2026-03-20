@@ -442,7 +442,7 @@ function loadStats() {
     $.get(`${API}/api/games/${gameId}/stats`, function (res) {
         if (!res.stats || !Array.isArray(res.stats)) return;
 
-        allStats = res.stats.slice(0, 50); // limit
+        allStats = res.stats 
         updateAllPlayerStats();
     });
 }
@@ -558,6 +558,7 @@ $('#ctrl-resume').click(function () {
         data: JSON.stringify({ status: 'PLAYING' }),
         success: function (res) {
             gameData = res.game;
+            console.log(gameData);
             startClock();
             $('#ctrl-resume').addClass('d-none');
             $('#ctrl-pause').removeClass('d-none');
@@ -567,6 +568,7 @@ $('#ctrl-resume').click(function () {
 
 $('#ctrl-next-q').click(function () {
     stopClock();
+    console.log(gameData);
     const nextPeriod = (gameData.currentPeriod || 1) + 1;
     if (nextPeriod > 4 + (gameData.quarterScores?.overtimes?.length || 0)) return;
     clockSeconds = nextPeriod <= 4 ? 600 : 300;

@@ -170,8 +170,8 @@ exports.getGames = async (req, res) => {
             filter.tournament = req.query.tournament;
         }
         const games = await Game.find(filter)
-            .populate('createdBy', 'username email', {lean: true})
-            .populate('tournament', {lean: true}).sort({ gameDate: -1 }).lean();
+            .populate('createdBy', 'username email')
+            .populate('tournament').sort({ gameDate: -1 }).lean();
             
         res.status(200).json({
             success: true,
@@ -253,8 +253,8 @@ exports.recordGameEvent = async (req, res) => {
         });
         await event.save();
 
-        game.events.push(event._id);
-        await game.save();
+        // game.events.push(event._id);
+        // await game.save();
 
         // Update stats
         await updateStatsForEvent(event);
@@ -263,9 +263,8 @@ exports.recordGameEvent = async (req, res) => {
         const updatedGame = await Game.findById(game._id);
         const stats = await GameStats.find({ gameId: game._id });
         const events = await GameEvent.find({ gameId: game._id, reversed: false })
-            .sort('-createdAt').limit(50).populate('playerId', {lean: true}).lean();
-
-        events.slice(-50)
+            .sort('-createdAt').limit(50).populate('playerId').lean();
+        
         res.json({ game: updatedGame, stats, events });
     } catch (err) {
         res.status(400).json({ error: err.message });
@@ -288,9 +287,8 @@ exports.undoLastEvent = async (req, res) => {
         const game = await Game.findById(req.params.gameId);
         const stats = await GameStats.find({ gameId: game._id });
         const events = await GameEvent.find({ gameId: game._id, reversed: false })
-            .sort('-createdAt').limit(50).populate('playerId', {lean: true}).lean();
+            .sort('-createdAt').limit(50).populate('playerId').lean();
 
-        events.slice(-50)
         res.json({ game, stats, events });
     } catch (err) {
         res.status(400).json({ error: err.message });
@@ -324,7 +322,7 @@ exports.addOvertime = async (req, res) => {
 // get stats for a game
 exports.loadStats = async (req, res) => {
     try {
-        const stats = await GameStats.find({ gameId: req.params.gameId }).populate('playerId', {lean: true}).lean();
+        const stats = await GameStats.find({ gameId: req.params.gameId }).populate('playerId').lean();
         res.json(stats);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -335,7 +333,7 @@ exports.loadStats = async (req, res) => {
 exports.loadEvents = async (req, res) => {
     try {
         const events = await GameEvent.find({ gameId: req.params.gameId, reversed: false })
-            .sort({createdAt: -1}).limit(100).populate('playerId', {lean: true}).lean();
+            .sort({createdAt: -1}).limit(100).populate('playerId').lean();
         res.json(events);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -825,7 +823,7 @@ exports.updateGame = async (req, res) => {
         }
 
         const updatedGame = await game.save();
-        await game.populate('createdBy', 'username email', {lean: true}).populate('tournament', {lean: true});
+        await game.populate('createdBy', 'username email').populate('tournament');
 
         res.status(200).json({
             success: true,

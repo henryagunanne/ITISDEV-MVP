@@ -95,10 +95,7 @@ const gameSchema = new mongoose.Schema({
       enum: ['NOT_STARTED', 'PLAYING', 'PAUSED', 'ENDED'],
       default: 'NOT_STARTED'
     },
-    events: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'GameEvent'
-    }],
+    
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
@@ -123,7 +120,6 @@ gameSchema.pre('save', function () {
 gameSchema.pre('find', function () {
     this.populate('createdBy', 'username email')
     .populate('tournament') // Populate all fields in the tournament schema
-    .populate('events')
     .populate('players')
     //next();
 });

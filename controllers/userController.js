@@ -42,21 +42,6 @@ exports.registerUser = async (req, res) => {
 };
   
 
-// Get user profile
-exports.getUserProfile = async (req, res) => {
-    try {
-      const userId = req.session.user._id; // Get user ID from session
-      const user = await User.findById(userId).select('-password').lean(); // Exclude password field
-  
-      if (!user) {
-        return res.status(404).json({ success: false, message: 'User not found' });
-      }
-  
-      res.status(200).json({ success: true, user });
-    } catch (error) {
-      res.status(500).json({ message: 'Error fetching user profile', error: error.message });
-    }
-};
 
 // Update user profile
 exports.updateUserProfile = async (req, res) => {

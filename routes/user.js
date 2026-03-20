@@ -10,9 +10,6 @@ router.use(isAuthenticated);    // All routes in this router require authenticat
 // Create a new user
 router.post('/register', authorize('Admin'), userController.registerUser);
 
-// Get user profile
-router.get('/profile', userController.getUserProfile);
-
 // Update user profile
 router.put('/update-profile', userController.updateUserProfile);
 
