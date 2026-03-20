@@ -92,9 +92,12 @@ function renderTeamSummary(stats) {
         const t = s.totals || {};
         const target = s.team === 'lasalle' ? home : opp;
 
+        const fgm = t.fieldGoalsMade + t.threePointersMade;
+        const fga = t.fieldGoalsAttempted + t.threePointersAttempted;
+
         target.pts += t.points || 0;
-        target.fgm += t.fieldGoalsMade || 0;
-        target.fga += t.fieldGoalsAttempted || 0;
+        target.fgm += fgm || 0;
+        target.fga += fga || 0;
         target.reb += (t.offensiveRebounds || 0) + (t.defensiveRebounds || 0);
         target.ast += t.assists || 0;
     });

@@ -1,17 +1,78 @@
-<h1>Analytics</h1>
 
-<div class="analytics-grid">
+<main class="col-md-10 ms-auto px-4 py-4">
 
-    <div class="card">PPG: {{analytics.ppg}}</div>
-    <div class="card">FG%: {{analytics.fg}}</div>
-    <div class="card">Turnovers: {{analytics.to}}</div>
+    <div class="container-fluid p-4">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Reports & Analytics</h2>
+            <div>
+                <button class="btn btn-outline-success me-2" onclick="exportCSV()">Export CSV</button>
+                <select id="filterSeason" class="form-select d-inline w-auto">
+                    <option value="all">All Season</option>
+                </select>
+            </div>
+        </div>
 
-    <div class="card wide">
-        <canvas id="topScorers"></canvas>
+        <!-- Team Overview -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card p-3 shadow-sm">
+                    <h6>Total Games</h6>
+                    <h3 id="totalGames">0</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 shadow-sm">
+                    <h6>Win Rate</h6>
+                    <h3 id="winRate">0%</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 shadow-sm">
+                    <h6>Avg Points</h6>
+                    <h3 id="avgPoints">0</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 shadow-sm">
+                    <h6>Avg Assists</h6>
+                    <h3 id="avgAssists">0</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="card p-3">
+                    <h5>Points per Game Trend</h5>
+                    <canvas id="pointsChart"></canvas>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card p-3">
+                    <h5>Win/Loss Distribution</h5>
+                    <canvas id="winLossChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Player Table -->
+        <div class="card p-3">
+            <h5>Player Performance</h5>
+            <table class="table">
+                <thead>
+                    <tr>
+                    <th>Name</th>
+                    <th>PPG</th>
+                    <th>RPG</th>
+                    <th>APG</th>
+                    <th>Efficiency</th>
+                    </tr>
+                </thead>
+                <tbody id="playerStatsTable">
+                </tbody>
+            </table>
+        </div>
     </div>
-
-    <div class="card wide">
-        <canvas id="teamPerformance"></canvas>
-    </div>
-
-</div>
+</main>

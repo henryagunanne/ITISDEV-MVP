@@ -390,8 +390,10 @@ function updateAllPlayerStats() {
 
 function renderTeamStats(selector, a) {
     const pct = (m, att) => att === 0 ? '0.0' : ((m / att) * 100).toFixed(1);
+    const fgm = a.fgm + a.tpm;
+    const fga = a.fga + a.tpa;
     const stats = [
-        { lbl: 'FG%', val: pct(a.fgm, a.fga) + '%', sub: `${a.fgm}/${a.fga}` },
+        { lbl: 'FG%', val: pct(fgm, fga) + '%', sub: `${fgm}/${fga}` },
         { lbl: '3PT%', val: pct(a.tpm, a.tpa) + '%', sub: `${a.tpm}/${a.tpa}` },
         { lbl: 'FT%', val: pct(a.ftm, a.fta) + '%', sub: `${a.ftm}/${a.fta}` },
         { lbl: 'REB', val: a.oreb + a.dreb, sub: `${a.oreb}O/${a.dreb}D` },

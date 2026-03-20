@@ -25,6 +25,7 @@ router.get('/statistics-encoding', isAuthenticated, (req, res) => {
   });
 });
 
+
 // Players list page
 router.get('/players', isAuthenticated, async (req, res) => {
   try {
@@ -44,6 +45,7 @@ router.get('/players', isAuthenticated, async (req, res) => {
 
 // Render statistics page
 router.get('/gameStats', isAuthenticated, async (req, res) => {
+  try {
     const game = await Game.find({ status: 'ENDED' }).sort('-gameDate').lean();
     if (!game) res.status(400);
 
@@ -51,6 +53,9 @@ router.get('/gameStats', isAuthenticated, async (req, res) => {
       title: 'Team Statistics Summary',
       game
     });
+  } catch (e) {
+    res.status(500).send('Error loading statistics page');
+  }
 });
 
 // Player profile page
@@ -117,7 +122,15 @@ router.get('/games', isAuthenticated, async (req, res) => {
 });
 
 
-// Get user profile
+// Render Reports and Analytics Page
+router.get('/analytics', isAuthenticated, async (req, res) => {
+  res.render("pages/analytics", {
+    title: 'Reports & Analytics'
+  });
+})
+
+
+// Render user profile
 router.get('/user-profile', isAuthenticated, async (req, res) => {
   try {
     const userId = req.session.user.id; // Get user ID from session
