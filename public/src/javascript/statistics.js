@@ -1,6 +1,7 @@
 const API = '';
 
 let selectedGameId = null;
+let teamChart, shootingChart;
 
 // Load games into dropdown
 $(document).ready(function () {
@@ -12,12 +13,24 @@ $(document).ready(function () {
             loadStats(selectedGameId);
         }
     });
+
+    $('#manual-input-btn').click(function () {
+        if (!selectedGameId) {
+            alert('Please select a game first');
+            return;
+        }
+        window.location.href = `/admin/manual-stats?gameId=${selectedGameId}`;
+    });
+    
+    $('#live-input-btn').click(function () {
+        window.location.href = `/admin/start-game`;
+    });
 });
 
 function loadGames() {
     $.get(`${API}/api/games/all-games`, function (res) {
         const games = res.data || [];
-        console.log(games)
+
         let html = `<option value="">Select Game</option>`;
         games.forEach(g => {
             html += `<option value="${g._id}">
@@ -51,7 +64,7 @@ function renderTable(stats) {
         html += `
         <tr>
             <td>${s.playerId?.jerseyNumber || '-'}</td>
-            <td>${s.playerId?.fullName || 'Unknown'}</td>
+            <td>${s.playerId?.firstName || 'Unknown'} ${s.playerId?.lastName || 'Unknown'}</td>
             <td>${t.points || 0}</td>
             <td>${t.fieldGoalsMade || 0}/${t.fieldGoalsAttempted || 0}</td>
             <td>${t.threePointersMade || 0}/${t.threePointersAttempted || 0}</td>
@@ -97,4 +110,87 @@ function renderTeamSummary(stats) {
     $('#opp-fg').text(pct(opp.fgm, opp.fga) + '%');
     $('#opp-reb').text(opp.reb);
     $('#opp-ast').text(opp.ast);
+
+    renderCharts(home, opp);
+    generateInsights(home, opp);
+}
+
+
+function renderCharts(home, opp) {
+
+    const pct = (m, a) => a ? (m / a * 100).toFixed(1) : 0;
+
+    // Destroy old charts
+    if (teamChart) teamChart.destroy();
+    if (shootingChart) shootingChart.destroy();
+
+    // TEAM COMPARISON
+    teamChart = new Chart(document.getElementById('teamChart'), {
+        type: 'bar',
+        data: {
+            labels: ['PTS', 'REB', 'AST'],
+            datasets: [
+                {
+                    label: 'La Salle',
+                    data: [home.pts, home.reb, home.ast]
+                },
+                {
+                    label: 'Opponent',
+                    data: [opp.pts, opp.reb, opp.ast]
+                }
+            ]
+        }
+    });
+
+    // SHOOTING %
+    shootingChart = new Chart(document.getElementById('shootingChart'), {
+        type: 'radar',
+        data: {
+            labels: ['FG%', '3PT%', 'FT%'],
+            datasets: [{
+                label: 'La Salle',
+                data: [
+                    pct(home.fgm, home.fga),
+                    pct(home.tpm, home.tpa),
+                    pct(home.ftm, home.fta)
+                ]
+            }]
+        }
+    });
+}
+
+function generateInsights(home, opp) {
+
+    let insights = [];
+
+    if (home.pts > opp.pts) {
+        insights.push("La Salle is leading");
+    } 
+    if (home.pts < opp.pts) {
+        insights.push("Opponent is leading");
+    }
+
+    const fgDiff = (home.fgm / home.fga) - (opp.fgm / opp.fga);
+
+    if (fgDiff > 0.1) {
+        insights.push("Strong shooting advantage");
+    }
+
+    if (home.reb > opp.reb) {
+        insights.push("Rebounding advantage");
+    }
+
+    if (home.to > opp.to) {
+        insights.push("Too many turnovers");
+    }
+
+    if (home.ast > opp.ast) {
+        insights.push("Sharing is caring! Team ball movement was great");
+    }
+
+    if (insights.length == 0) {
+        $('#insights-box').html("No insights for this game");
+    } else {
+        $('#insights-box').html(insights.join('<br>'));
+    }
 }
