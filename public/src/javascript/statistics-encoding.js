@@ -11,36 +11,26 @@ document.addEventListener("DOMContentLoaded", () => {
   const hiddenGameId = document.getElementById("gameId");
 
 
-  // LOAD GAMES FROM API
- 
-
+  // ===============================
+  // LOAD GAMES
+  // ===============================
   async function loadGames() {
-
     try {
-
       const response = await fetch("/api/games");
       const result = await response.json();
 
       const games = result.data;
 
       games.forEach((game) => {
-
         const option = document.createElement("option");
-
         option.value = game._id;
-
         option.textContent = `${game.opponent} (${new Date(game.gameDate).toLocaleDateString()})`;
-
         gameSelect.appendChild(option);
-
       });
 
     } catch (error) {
-
       console.error("Error loading games:", error);
-
     }
-
   }
 
   loadGames();
@@ -49,75 +39,62 @@ document.addEventListener("DOMContentLoaded", () => {
   // ===============================
   // GAME SELECT
   // ===============================
-
   gameSelect.addEventListener("change", () => {
 
     const gameId = gameSelect.value;
 
     if (!gameId) {
-
       addStatsBtn.disabled = true;
 
       statsTableBody.innerHTML =
         `<tr><td colspan="11" style="text-align:center">Select a game</td></tr>`;
-
       return;
-
     }
 
     addStatsBtn.disabled = false;
-
     loadStats(gameId);
-
   });
 
 
-
+  // ===============================
   // OPEN MODAL
-  
-
+  // ===============================
   addStatsBtn.addEventListener("click", () => {
-
     const selectedGame = gameSelect.value;
 
+    if (!selectedGame) {
+      alert("Select a game first");
+      return;
+    }
+
     hiddenGameId.value = selectedGame;
-
     statsModal.style.display = "flex";
-
   });
 
 
-
+  // ===============================
   // CLOSE MODAL
- 
-
+  // ===============================
   closeModal.addEventListener("click", () => {
-
     statsModal.style.display = "none";
-
   });
 
 
-
+  // ===============================
   // LOAD STATS
- 
-async function loadStats(gameId) {
+  // ===============================
+  async function loadStats(gameId) {
 
     try {
-
       const response = await fetch(`/api/gameStats/game/${gameId}`);
-
       const result = await response.json();
 
       const stats = result.data;
 
       if (!stats || stats.length === 0) {
-
         statsTableBody.innerHTML =
           `<tr><td colspan="11" style="text-align:center">No stats yet</td></tr>`;
-
         return;
-
       }
 
       statsTableBody.innerHTML = "";
@@ -152,88 +129,75 @@ async function loadStats(gameId) {
       });
 
     } catch (error) {
-
       console.error("Error loading stats:", error);
 
       statsTableBody.innerHTML =
         `<tr><td colspan="11" style="text-align:center">Error loading stats</td></tr>`;
-
     }
 
   }
 
 
-  
-  // SAVE STATS
-
+  // ===============================
+  // SAVE STATS (FIXED 🔥)
+  // ===============================
   statsForm.addEventListener("submit", async (e) => {
 
     e.preventDefault();
 
     const gameId = hiddenGameId.value;
-
     const playerId = document.getElementById("playerId").value;
 
-    const statsData = {
+    const totals = {
+      minutesPlayed: Number(document.getElementById("minutesPlayed").value) || 0,
+      points: Number(document.getElementById("points").value) || 0,
+      assists: Number(document.getElementById("assists").value) || 0,
+      offensiveRebounds: Number(document.getElementById("offensiveRebounds").value) || 0,
+      defensiveRebounds: Number(document.getElementById("defensiveRebounds").value) || 0,
+      steals: Number(document.getElementById("steals").value) || 0,
+      blocks: Number(document.getElementById("blocks").value) || 0,
+      turnovers: Number(document.getElementById("turnovers").value) || 0,
+      fouls: Number(document.getElementById("fouls").value) || 0,
+      plusMinus: Number(document.getElementById("plusMinus").value) || 0
+    };
 
+    const statsData = {
       gameId,
       playerId,
-
+      totals,
       periodStats: {
-
-        q1: {
-
-          minutesPlayed: Number(document.getElementById("minutesPlayed").value),
-          points: Number(document.getElementById("points").value),
-          assists: Number(document.getElementById("assists").value),
-          offensiveRebounds: Number(document.getElementById("offensiveRebounds").value),
-          defensiveRebounds: Number(document.getElementById("defensiveRebounds").value),
-          steals: Number(document.getElementById("steals").value),
-          blocks: Number(document.getElementById("blocks").value),
-          turnovers: Number(document.getElementById("turnovers").value),
-          fouls: Number(document.getElementById("fouls").value),
-          plusMinus: Number(document.getElementById("plusMinus").value)
-
-        }
-
+        q1: { ...totals } // reuse totals for now
       }
-
     };
 
     try {
 
       const response = await fetch("/api/gameStats/create", {
-
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify(statsData)
-
       });
 
       const result = await response.json();
 
       if (result.success) {
 
-        alert("Stats saved successfully");
+        alert(" Stats saved successfully");
 
         statsModal.style.display = "none";
-
-        loadStats(gameId);
-
         statsForm.reset();
 
+        loadStats(gameId); // refresh table
+
       } else {
-
         alert("Failed to save stats");
-
       }
 
     } catch (error) {
 
       console.error("Error saving stats:", error);
-
       alert("Error saving stats");
 
     }

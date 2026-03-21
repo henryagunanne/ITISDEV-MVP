@@ -48,19 +48,17 @@ font-size:20px;
 </div>
 </header>
 
-
 <div class="layout">
 
 <aside class="sidebar">
 <ul>
-<li><a href="admin-dashboard.html"><i class="fa-solid fa-gauge"></i> Dashboard</a></li>
-<li><a href="player-admin.html"><i class="fa-solid fa-users"></i> Players</a></li>
-<li><a href="admin-games.html"><i class="fa-solid fa-calendar"></i> Games</a></li>
-<li><a href="statistics-encoding.html"><i class="fa-solid fa-chart-column"></i> Statistics</a></li>
-<li><a href="reports-admin.html"><i class="fa-solid fa-file"></i> Reports</a></li>
+<li><a href="admin-dashboard.html">Dashboard</a></li>
+<li><a href="player-admin.html">Players</a></li>
+<li><a href="admin-games.html">Games</a></li>
+<li><a href="statistics-encoding.html">Statistics</a></li>
+<li><a href="reports-admin.html">Reports</a></li>
 </ul>
 </aside>
-
 
 <main class="main">
 
@@ -72,6 +70,7 @@ font-size:20px;
 
 <select id="gameSelect">
 <option value="">Choose a game...</option>
+<!-- pwede mo lagyan later -->
 </select>
 
 <button id="addStatsBtn" disabled>
@@ -79,7 +78,6 @@ font-size:20px;
 </button>
 
 </section>
-
 
 <div class="table-container">
 
@@ -102,13 +100,11 @@ font-size:20px;
 </thead>
 
 <tbody id="statsTableBody">
-
 <tr>
 <td colspan="11" style="text-align:center">
 Select a game to view statistics
 </td>
 </tr>
-
 </tbody>
 
 </table>
@@ -118,10 +114,8 @@ Select a game to view statistics
 </main>
 </div>
 
-
 <!-- MODAL -->
 <div id="statsModal" class="modal">
-
 <div class="modal-content">
 
 <span class="close-btn" id="closeModal">&times;</span>
@@ -165,16 +159,16 @@ Select a game to view statistics
 <label>Plus Minus</label>
 <input type="number" id="plusMinus" value="0">
 
+<br><br>
 <button type="submit">Save Stats</button>
 
 </form>
 
 </div>
-
 </div>
 
-
-<script src="../js/statistics-encoding.js"></script>
+<!-- FIXED PATH -->
+<script src="../javascript/statistics-encoding.js"></script>
 
 </body>
 </html>
