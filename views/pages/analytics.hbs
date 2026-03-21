@@ -1,57 +1,80 @@
+<link rel="stylesheet" href="/src/css/analytics.css">
 
 <main class="col-md-10 ms-auto px-4 py-4">
 
-    <div class="container-fluid p-4">
+    <div class="main-content p-4">
+
         <!-- Header -->
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2>Reports & Analytics</h2>
+            <h2 class="fw-bold">Reports & Analytics</h2>
             <div>
                 <button class="btn btn-outline-success me-2" onclick="exportCSV()">Export CSV</button>
-                <select id="filterSeason" class="form-select d-inline w-auto">
-                    <option value="all">All Season</option>
+                 <button class="btn btn-outline-success me-2" onclick="exportPDF()">Export PDF</button>
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <select id="seasonFilter" class="form-select">
+                    <option value="">All Seasons</option>
                 </select>
+            </div>
+
+            <div class="col-md-3">
+                <input type="text" id="opponentFilter" class="form-control" placeholder="Opponent">
+            </div>
+
+            <div class="col-md-3">
+                <input type="date" id="startDate" class="form-control" placeholder="Start Date">
+            </div>
+
+            <div class="col-md-3">
+                <input type="date" id="endDate" class="form-control" placeholder="End Date">
             </div>
         </div>
 
-        <!-- Team Overview -->
-        <div class="row mb-4">
+        <!-- Overview Cards -->
+        <div class="row g-3 mb-4">
             <div class="col-md-3">
-                <div class="card p-3 shadow-sm">
-                    <h6>Total Games</h6>
+                <div class="card shadow-sm p-3">
+                    <small>Total Games</small>
                     <h3 id="totalGames">0</h3>
                 </div>
             </div>
+
             <div class="col-md-3">
-                <div class="card p-3 shadow-sm">
-                    <h6>Win Rate</h6>
+                <div class="card shadow-sm p-3">
+                    <small>Win Rate</small>
                     <h3 id="winRate">0%</h3>
                 </div>
             </div>
+
             <div class="col-md-3">
-                <div class="card p-3 shadow-sm">
-                    <h6>Avg Points</h6>
+                <div class="card shadow-sm p-3">
+                    <small>Avg Points</small>
                     <h3 id="avgPoints">0</h3>
                 </div>
             </div>
+
             <div class="col-md-3">
-                <div class="card p-3 shadow-sm">
-                    <h6>Avg Assists</h6>
-                    <h3 id="avgAssists">0</h3>
+                <div class="card shadow-sm p-3">
+                    <small>Team Efficiency</small>
+                    <h3 id="teamEfficiency">0</h3>
                 </div>
             </div>
         </div>
 
         <!-- Charts -->
-        <div class="row mb-4">
+        <div class="row g-3 mb-4">
             <div class="col-md-8">
                 <div class="card p-3">
-                    <h5>Points per Game Trend</h5>
+                    <h5>Points Trend</h5>
                     <canvas id="pointsChart"></canvas>
                 </div>
             </div>
+
             <div class="col-md-4">
                 <div class="card p-3">
-                    <h5>Win/Loss Distribution</h5>
+                    <h5>Win / Loss</h5>
                     <canvas id="winLossChart"></canvas>
                 </div>
             </div>
@@ -60,19 +83,24 @@
         <!-- Player Table -->
         <div class="card p-3">
             <h5>Player Performance</h5>
-            <table class="table">
+            <table class="table table-hover">
                 <thead>
                     <tr>
-                    <th>Name</th>
-                    <th>PPG</th>
-                    <th>RPG</th>
-                    <th>APG</th>
-                    <th>Efficiency</th>
+                        <th>Player</th>
+                        <th>PPG</th>
+                        <th>RPG</th>
+                        <th>APG</th>
+                        <th>Efficiency</th>
+                        <th>TS%</th>
+                        <th>Usage</th>
                     </tr>
                 </thead>
-                <tbody id="playerStatsTable">
-                </tbody>
+                <tbody id="playerTable"></tbody>
             </table>
         </div>
+
     </div>
 </main>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="/src/javascript/analytics.js"></script>

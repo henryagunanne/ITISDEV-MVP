@@ -1,0 +1,139 @@
+/* =========================
+   REPORTS PAGE STYLING
+========================= */
+
+.main-content {
+    background-color: #f5f7f9;
+    min-height: 100vh;
+}
+
+/* =========================
+    HEADER
+========================= */
+.main-content h2 {
+    color: #1f2937;
+    font-weight: 600;
+}
+
+/* Buttons */
+.btn-success {
+    background-color: #006F3C;
+    border: none;
+}
+
+.btn-success:hover {
+    background-color: #005530;
+}
+
+.btn-outline-success {
+    border-color: #006F3C;
+    color: #006F3C;
+}
+
+.btn-outline-success:hover {
+    background-color: #006F3C;
+    color: #fff;
+}
+
+/* =========================
+    CARDS (OVERVIEW + SECTIONS)
+========================= */
+.card {
+    border: none;
+    border-radius: 12px;
+    background: #ffffff;
+    transition: all 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.card h3 {
+    font-weight: 700;
+    color: #006F3C;
+}
+
+.card small {
+    color: #6b7280;
+}
+
+/* =========================
+    CHART CONTAINERS
+========================= */
+.card canvas {
+    margin-top: 10px;
+}
+
+/* =========================
+    TABLE
+========================= */
+.table {
+    margin-top: 10px;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.table thead {
+    background-color: #006F3C;
+    color: #ffffff;
+}
+
+.table th {
+    font-weight: 500;
+    border: none;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.table tbody tr {
+    transition: background 0.2s ease;
+}
+
+.table tbody tr:hover {
+    background-color: #f0fdf4;
+}
+
+/* =========================
+    FILTER DROPDOWN
+========================= */
+select.form-select {
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+}
+
+select.form-select:focus {
+    border-color: #006F3C;
+    box-shadow: 0 0 0 0.2rem rgba(0, 111, 60, 0.2);
+}
+
+/* =========================
+    RESPONSIVE DESIGN
+========================= */
+@media (max-width: 768px) {
+.main-content {
+    padding: 15px;
+}
+
+.card {
+    padding: 15px;
+}
+
+h2 {
+    font-size: 20px;
+}
+
+.table {
+    font-size: 14px;
+}
+}
+
+/* =========================
+    SMOOTH UI FEEL
+========================= */
+* {
+    transition: all 0.15s ease-in-out;
+}

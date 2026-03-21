@@ -1094,3 +1094,283 @@ exports.getPerformanceByHalfForAllPlayers = async (req, res) => {
 // Also average points is not the same as ppg since a player may not score in a particular game
 // Find ways to optimize the analytics endpoints since some of them may be computationally expensive (especially the ones that require lookups and grouping) 
 // - maybe we can pre-aggregate some stats and store them in a separate collection for faster retrieval? This would require additional logic to update the pre-aggregated stats whenever new game stats are added or updated.
+
+
+
+
+
+// Get reports summary for reports page
+exports.reportSummary = async (req, res) => {
+    try{
+        const query = {};
+
+        if (req.query.season) query.season = req.query.season;
+        if (req.query.opponent) query.opponent = req.query.opponent;
+
+        const games = await Game.find(query);
+        const stats = await GameStats.find();
+    
+        const totalGames = games.length;
+        const wins = games.filter(g => g.result === 'Win').length;
+    
+        const totalPoints = stats.reduce((sum, s) => sum + (s.totals?.points || 0), 0);
+    
+        const avgPoints = totalGames > 0 ? totalPoints / totalGames : 0;
+    
+        const efficiency = stats.length > 0
+            ? stats.reduce((sum, s) => {
+                const t = s.totals || {};
+                const rebounds = (t.offensiveRebounds || 0) + (t.defensiveRebounds || 0);
+
+                return sum + (
+                    (t.points || 0) +
+                    rebounds +
+                    (t.assists || 0) -
+                    (t.turnovers || 0)
+                );
+                }, 0) / stats.length
+            : 0;
+    
+        res.status(200).json({
+            totalGames,
+            wins,
+            losses: totalGames - wins,
+            winRate: totalGames > 0 ? (wins / totalGames) * 100 : 0,
+            avgPoints,
+            efficiency,
+            games: games.map((g, i) => `Game ${i+1}`),
+            points: games.map(g => g.teamScore)
+        });
+    } catch (err) {
+        res.status(500).message("Error fetching summary");
+        console.error("Error:", err.message);
+    }
+};
+
+// player reports summary for the reports and analytics page
+exports.reportPlayerSummary = async (req, res) => {
+    try {
+      const players = await GameStats.aggregate([
+  
+        // Remove null players
+        {
+          $match: {
+            playerId: { $ne: null }
+          }
+        },
+  
+        {
+          $group: {
+            _id: "$playerId",
+  
+            // BASIC STATS
+            ppg: { $avg: "$totals.points" },
+  
+            rpg: {
+              $avg: {
+                $add: [
+                  "$totals.offensiveRebounds",
+                  "$totals.defensiveRebounds"
+                ]
+              }
+            },
+  
+            apg: { $avg: "$totals.assists" },
+  
+            // TRUE SHOOTING %
+            tsPercentage: {
+              $avg: {
+                $cond: [
+                  {
+                    $gt: [
+                      {
+                        $add: [
+                          "$totals.fieldGoalsAttempted",
+                          "$totals.freeThrowsAttempted"
+                        ]
+                      },
+                      0
+                    ]
+                  },
+                  {
+                    $divide: [
+                      "$totals.points",
+                      {
+                        $multiply: [
+                          2,
+                          {
+                            $add: [
+                              "$totals.fieldGoalsAttempted",
+                              {
+                                $multiply: [0.44, "$totals.freeThrowsAttempted"]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  0
+                ]
+              }
+            },
+  
+            // PLAYER EFFICIENCY
+            efficiency: {
+              $avg: {
+                $subtract: [
+                  {
+                    $add: [
+                      "$totals.points",
+                      "$totals.assists",
+                      {
+                        $add: [
+                          "$totals.offensiveRebounds",
+                          "$totals.defensiveRebounds"
+                        ]
+                      },
+                      { $ifNull: ["$totals.steals", 0] },
+                      { $ifNull: ["$totals.blocks", 0] }
+                    ]
+                  },
+                  {
+                    $add: [
+                      { $ifNull: ["$totals.turnovers", 0] },
+  
+                      // missed shots = FGA - FGM
+                      {
+                        $subtract: [
+                          "$totals.fieldGoalsAttempted",
+                          "$totals.fieldGoalsMade"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+  
+            // USAGE RATE (SIMPLIFIED)
+            usageRate: {
+              $avg: {
+                $cond: [
+                  {
+                    $gt: [
+                      {
+                        $add: [
+                          "$totals.fieldGoalsAttempted",
+                          "$totals.freeThrowsAttempted",
+                          "$totals.turnovers"
+                        ]
+                      },
+                      0
+                    ]
+                  },
+                  {
+                    $divide: [
+                      {
+                        $add: [
+                          "$totals.fieldGoalsAttempted",
+                          "$totals.freeThrowsAttempted",
+                          "$totals.turnovers"
+                        ]
+                      },
+                      100 // placeholder team possessions
+                    ]
+                  },
+                  0
+                ]
+              }
+            }
+          }
+        },
+  
+        // Join player info
+        {
+          $lookup: {
+            from: "players",
+            localField: "_id",
+            foreignField: "_id",
+            as: "playerInfo"
+          }
+        },
+  
+        {
+          $unwind: "$playerInfo"
+        },
+  
+        {
+          $project: {
+            _id: 0,
+            name: {
+              $concat: [
+                { $ifNull: ["$playerInfo.firstName", ""] },
+                " ",
+                { $ifNull: ["$playerInfo.lastName", ""] }
+              ]
+            },
+  
+            ppg: { $round: ["$ppg", 1] },
+            rpg: { $round: ["$rpg", 1] },
+            apg: { $round: ["$apg", 1] },
+  
+            tsPercentage: { $round: ["$tsPercentage", 3] },
+            efficiency: { $round: ["$efficiency", 1] },
+            usageRate: { $round: ["$usageRate", 3] }
+          }
+        }
+  
+      ]);
+  
+      res.json(players);
+  
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Error fetching player summary" });
+    }
+};
+
+
+// Game summaries
+exports.getGameSummaries = async (req, res) => {
+    const game = await Game.findById(req.params.id);
+    const stats = await GameStats.find({ game: game._id });
+  
+    res.json({
+      opponent: game.opponent,
+      score: game.teamScore + " - " + game.opponentScore,
+      topPlayer: stats.sort((a,b) => b.totals.points - a.totals.points)[0]
+    });
+};
+
+
+// Export CSV reports
+exports.exportCSV = async (req, res) => {
+    const stats = await GameStats.find();
+  
+    let csv = "Player,Points,Rebounds,Assists\n";
+  
+    stats.forEach(s => {
+        const t = s.totals || {};
+        const rebounds = (t.offensiveRebounds || 0) + (t.defensiveRebounds || 0);
+        csv += `${s.player},${t.points},${rebounds},${t.assists}\n`;
+    });
+  
+    res.header('Content-Type', 'text/csv');
+    res.attachment('report.csv');
+    res.send(csv);
+};
+
+
+// Export PDF reports
+const PDFDocument = require('pdfkit');
+exports.exportPDF =  async (req, res) => {
+  const doc = new PDFDocument();
+
+  res.setHeader('Content-Type', 'application/pdf');
+  doc.pipe(res);
+
+  doc.text("Team Performance Report");
+
+  doc.end();
+};

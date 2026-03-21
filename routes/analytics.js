@@ -6,6 +6,24 @@ const { isAuthenticated, authorize } = require('../middleware/auth');
 
 router.use(isAuthenticated);
 
+
+// GET /api/analytics/summary - Returns the computed report summary
+router.get("/summary", analyticsController.reportSummary);
+
+
+// GET /api/analytics/players - Returns the computed player report summary for the reports page
+router.get('/players', analyticsController.reportPlayerSummary);
+
+
+// Returns Game summaries
+router.get('/game-summary/:id', analyticsController.getGameSummaries);
+
+// Export CSV reports
+router.get('/export/csv', analyticsController.exportCSV);
+
+// Export PDF reports
+router.get('/exports/pdf', analyticsController.exportPDF);
+
 // ── Box Score ──────────────────────────────────────────────
 // GET /api/analytics/boxscore/:gameId
 // Returns full box score for a single game (all player stats)

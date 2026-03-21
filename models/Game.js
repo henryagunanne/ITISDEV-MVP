@@ -144,12 +144,14 @@ gameSchema.methods.calculateFinalScore = function () {
     this.teamScore = teamTotal;
     this.opponentScore = oppTotal;
 
-    // Update result automatically
-    if (this.teamScore > this.opponentScore) {
-        this.result = "Win";
-    } else if (this.teamScore < this.opponentScore) {
-        this.result = "Loss";
-    } 
+    if (this.status == "ENDED") {
+        // Update result automatically
+        if (this.teamScore > this.opponentScore) {
+            this.result = "Win";
+        } else if (this.teamScore < this.opponentScore) {
+            this.result = "Loss";
+        } 
+    }
 };
 
 
