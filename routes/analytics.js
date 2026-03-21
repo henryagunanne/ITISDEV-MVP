@@ -22,7 +22,7 @@ router.get('/game-summary/:id', analyticsController.getGameSummaries);
 router.get('/export/csv', analyticsController.exportCSV);
 
 // Export PDF reports
-router.get('/exports/pdf', analyticsController.exportPDF);
+router.get('/export/pdf', analyticsController.exportPDF);
 
 // ── Box Score ──────────────────────────────────────────────
 // GET /api/analytics/boxscore/:gameId

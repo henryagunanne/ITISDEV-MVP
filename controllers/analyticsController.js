@@ -1346,14 +1346,14 @@ exports.getGameSummaries = async (req, res) => {
 
 // Export CSV reports
 exports.exportCSV = async (req, res) => {
-    const stats = await GameStats.find();
+    const stats = await GameStats.find().populate('playerId', 'firstName lastName');
   
     let csv = "Player,Points,Rebounds,Assists\n";
   
     stats.forEach(s => {
         const t = s.totals || {};
         const rebounds = (t.offensiveRebounds || 0) + (t.defensiveRebounds || 0);
-        csv += `${s.player},${t.points},${rebounds},${t.assists}\n`;
+        csv += `${s.playerId?.firstName} ${s.playerId?.lastName},${t.points},${rebounds},${t.assists}\n`;
     });
   
     res.header('Content-Type', 'text/csv');

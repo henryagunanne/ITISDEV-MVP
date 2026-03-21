@@ -83,10 +83,10 @@ function renderCharts(data) {
 
 // Export CSV
 function exportCSV() {
-  window.location.href = "/api/analytics/export/csv";
+  window.open("/api/analytics/export/csv", '_blank');
 }
 
 // Export PDF
-function exportCSV() {
-    window.location.href = "/api/analytics/export/pdf";
+function exportPDF() {
+    window.open("/api/analytics/export/pdf", '_blank');
 }
