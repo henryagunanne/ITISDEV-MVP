@@ -47,6 +47,10 @@ body { font-family: 'Inter', sans-serif; background: #ffffff; color: #e2e8f0; }
 .stat-btn.negative:hover { background: rgba(239,68,68,0.1); }
 .stat-btn.assist { border-color: rgba(96,165,250,0.3); color: var(--assist-blue); }
 .stat-btn.assist:hover { background: rgba(96,165,250,0.1); }
+.stat-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
  
 /* PBP */
 .pbp-entry {
@@ -81,3 +85,9 @@ body { font-family: 'Inter', sans-serif; background: #ffffff; color: #e2e8f0; }
 
 /* Debounce visual */
 .stat-btn.cooldown { opacity: 0.5; pointer-events: none; }
+
+#ctrl-next-q:disabled,
+#ctrl-ot:disabled, #undo-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

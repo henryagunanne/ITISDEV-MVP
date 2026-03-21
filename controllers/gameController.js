@@ -217,6 +217,7 @@ exports.updateGameStatus = async (req, res) => {
         if (req.body.status) updates.status = req.body.status;
         if (req.body.currentPeriod) updates.currentPeriod = req.body.currentPeriod;
         if (req.body.gameClock) updates.gameClock = req.body.gameClock;
+
         const game = await Game.findByIdAndUpdate(req.params.gameId, updates, { returnDocument: 'after' });
         res.json(game);
     } catch (err) {
@@ -260,12 +261,13 @@ exports.recordGameEvent = async (req, res) => {
         await updateStatsForEvent(event);
 
         // Return updated game state
-        const updatedGame = await Game.findById(game._id);
-        const stats = await GameStats.find({ gameId: game._id });
+        const updatedGame = await Game.findById(game._id).lean();
+        const stats = await GameStats.find({ gameId: game._id }).populate('playerId', 'jerseyNumber').lean();
         const events = await GameEvent.find({ gameId: game._id, reversed: false })
-            .sort('-createdAt').limit(50).populate('playerId').lean();
-        
+            .sort('-createdAt').limit(50).populate('playerId', 'firstName lastName jerseyNumber').lean();
+
         res.json({ game: updatedGame, stats, events });
+
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
@@ -284,10 +286,10 @@ exports.undoLastEvent = async (req, res) => {
         // Reverse stats
         await updateStatsForEvent(lastEvent, true);
 
-        const game = await Game.findById(req.params.gameId);
-        const stats = await GameStats.find({ gameId: game._id });
+        const game = await Game.findById(req.params.gameId).lean();
+        const stats = await GameStats.find({ gameId: game._id }).populate('playerId', 'jerseyNumber').lean();;
         const events = await GameEvent.find({ gameId: game._id, reversed: false })
-            .sort('-createdAt').limit(50).populate('playerId').lean();
+            .sort('-createdAt').limit(50).populate('playerId', 'firstName lastName jerseyNumber').lean();
 
         res.json({ game, stats, events });
     } catch (err) {

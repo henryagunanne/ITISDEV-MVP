@@ -1361,6 +1361,21 @@ exports.exportCSV = async (req, res) => {
     res.send(csv);
 };
 
+
+// Export PDF reports
+const PDFDocument = require('pdfkit');
+exports.exportPDF =  async (req, res) => {
+  const doc = new PDFDocument();
+
+  res.setHeader('Content-Type', 'application/pdf');
+  doc.pipe(res);
+
+  doc.text("Team Performance Report");
+
+  doc.end();
+};
+
+
 // Unified endpoint for dashboard
 exports.getDashboardData = async (req, res) => {
     try {
@@ -1492,15 +1507,3 @@ exports.getDashboardData = async (req, res) => {
     }
 };
 
-// Export PDF reports
-const PDFDocument = require('pdfkit');
-exports.exportPDF =  async (req, res) => {
-  const doc = new PDFDocument();
-
-  res.setHeader('Content-Type', 'application/pdf');
-  doc.pipe(res);
-
-  doc.text("Team Performance Report");
-
-  doc.end();
-};

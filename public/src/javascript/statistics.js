@@ -1,6 +1,7 @@
 const API = '';
 
 let selectedGameId = null;
+let stat;
 let teamChart, shootingChart;
 
 // Load games into dropdown
@@ -9,6 +10,8 @@ $(document).ready(function () {
 
     $('#game-select').change(function () {
         selectedGameId = $(this).val();
+        stat = $(this).data('status');
+        console.log(stat);
         if (selectedGameId) {
             loadStats(selectedGameId);
         }
@@ -17,6 +20,9 @@ $(document).ready(function () {
     $('#manual-input-btn').click(function () {
         if (!selectedGameId) {
             alert('Please select a game first');
+            if (stat === "ENDED"){
+                alert('This game is already ended');
+            }
             return;
         }
         window.location.href = `/admin/manual-stats?gameId=${selectedGameId}`;
@@ -33,7 +39,7 @@ function loadGames() {
 
         let html = `<option value="">Select Game</option>`;
         games.forEach(g => {
-            html += `<option value="${g._id}">
+            html += `<option value="${g._id}" data-status="${g.status}">
                 vs ${g.opponent} (${new Date(g.gameDate).toLocaleDateString()})
             </option>`;
         });
@@ -197,3 +203,4 @@ function generateInsights(home, opp) {
         $('#insights-box').html(insights.join('<br>'));
     }
 }
+

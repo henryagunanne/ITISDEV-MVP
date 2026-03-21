@@ -8,6 +8,7 @@ let clockInterval = null;
 let clockSeconds = 600; // 10 min quarters
 let isRunning = false;
 let debouncing = {};
+let quarter = null;
 
 // ===================== SETUP PAGE =====================
 
@@ -141,8 +142,8 @@ function startGame() {
         success: function (res) {
             game = res.data;
             gameId = game._id;
-            gameData = game;
-            opponentPlayers = game.opponentPlayers;
+            // gameData = game;
+            // opponentPlayers = game.opponentPlayers;
             window.location.href = `/admin/encode-stats?gameId=${game._id}`
         },
         error: function (xhr) {
@@ -171,6 +172,7 @@ async function fetchGameDetails() {
         }
 
         initGameUI();
+        updateControls();
     } catch (err) {
         console.error("Failed to fetch game details:", err);
     }
@@ -185,9 +187,9 @@ function initGameUI() {
 
     renderHomePlayers();
     renderOpponentPlayers();
-    updateScoreboard();
     loadStats();
     loadEvents();
+    updateScoreboard();
 }
 
 function renderHomePlayers() {
@@ -197,6 +199,7 @@ function renderHomePlayers() {
         html += playerRowHTML(p._id, p.jerseyNumber, `${p.firstName} ${p.lastName}`, p.position, 'lasalle', isOnCourt, p.profilePhoto);
     });
     $('#home-players-panel').html(html);
+    
 }
 
 function renderOpponentPlayers() {
@@ -206,6 +209,7 @@ function renderOpponentPlayers() {
         html += playerRowHTML(null, p.jerseyNumber, p.fullName, p.position || '', 'opponent', isOnCourt, null);
     });
     $('#opp-players-panel').html(html);
+
 }
 
 function playerRowHTML(playerId, jersey, name, position, team, onCourt, photo) {
@@ -229,7 +233,7 @@ function playerRowHTML(playerId, jersey, name, position, team, onCourt, photo) {
             <div class="d-flex align-items-center gap-2">
                 <span class="fw-bold text-white font-mono player-pts" data-key="${team}-${jersey}-pts">0<span class="text-white ms-1" style="font-size:9px">PTS</span></span>
                 <span class="font-mono text-white player-fouls" data-key="${team}-${jersey}-fouls" style="font-size:10px">0F</span>
-                <button class="sub-btn" onclick="toggleOnCourt(this); recordStat(this, 'substitution')">SUB</button>
+                <button class="sub-btn">SUB</button>
             </div>
         </div>
         <div class="q-stat mb-1">
@@ -257,16 +261,103 @@ function playerRowHTML(playerId, jersey, name, position, team, onCourt, photo) {
     </div>`;
 }
 
+
+
+function updateControls() {
+    const period = gameData?.currentPeriod || 0;
+    const status = gameData?.status || 'PLAYING';
+
+    if (status == 'ENDED') {
+        $('#game-controls').html('<span class="badge bg-danger">FINAL</span>');
+        $('#hdr-clock').text("00:00")
+        $('.stat-btn').prop('disabled', true);
+        $('.stat-btn').prop('disabled', true);
+        $('.sub-btn').prop('disabled', true);
+        // $('#ctrl-end').prop('disabled', true);
+        // $('#ctrl-next-q').prop('disabled', true);
+        // $('#ctrl-ot').prop('disabled', true);
+        // $('#ctrl-start').prop('disabled', true);
+        // $('#ctrl-pause').prop('disabled', true);
+        // $('#ctrl-resume').prop('disabled', true);
+        $('#undo-btn').prop('disabled', true);
+    }
+    
+    if (period != 0) quarter = period;
+
+    // ===== STAT BUTTONS =====
+    let isOnCourt;
+    $('.stat-btn').prop('disabled', !isRunning);
+
+    // Disable stat recording for players not on court
+    $('.player-row').each(function () {
+        isOnCourt = $(this).data('oncourt');
+
+        if (isOnCourt == false) {
+            $(this).find('.stat-btn').prop('disabled', !isOnCourt);
+        }
+    });
+
+    // ===== SUB BUTTONS =====
+    $('.sub-btn').off('click'); // remove old handlers
+
+
+    // ===== GAME CONTROL BUTTONS =====
+    $('#ctrl-end').prop('disabled', isRunning);
+
+    // disable next quarter and OT buttons when clock is running or the time for a quarter is not done yet
+    if(clockSeconds != 0 || isRunning){
+        $('#ctrl-next-q').prop('disabled', true);
+        $('#ctrl-ot').prop('disabled', true);
+    } else {
+        $('#ctrl-next-q').prop('disabled', false);
+        $('#ctrl-ot').prop('disabled', false);
+    }
+
+
+    if (quarter >= 4) {
+        $('#ctrl-ot').removeClass('d-none');
+        $('#ctrl-next-q').addClass('d-none');
+    } 
+    
+    if (quarter < 4) {
+        $('#ctrl-next-q').removeClass('d-none');
+        $('#ctrl-ot').addClass('d-none');
+    }  
+    
+
+    if (!isRunning) {
+        const isFirstQuarter = period === 1;
+        const isequal10Min = clockSeconds === 600;
+
+        if (isFirstQuarter && isequal10Min) {
+            // Q1 under 10 min - ONLY toggle
+            $('.sub-btn').on('click', function () {
+                toggleOnCourt(this);
+            });
+        } else {
+            // Other cases - toggle + record stat
+            $('.sub-btn').on('click', function () {
+                toggleOnCourt(this);
+                recordStat(this, 'substitution');
+            });
+        }
+    }
+    
+}
+
 window.toggleOnCourt = function (btn) {
     const row = $(btn).closest('.player-row');
     const isOn = row.data('oncourt');
     row.data('oncourt', !isOn);
+
     const team = row.data('team');
+
     if (!isOn) {
         row.addClass(team === 'lasalle' ? 'on-court' : 'on-court-opp');
     } else {
         row.removeClass('on-court on-court-opp');
     }
+
 }
 
 // ===================== STAT RECORDING =====================
@@ -360,7 +451,7 @@ function updateAllPlayerStats() {
         const jersey = team === 'lasalle' ? (s.playerId?.jerseyNumber || 0) : s.opponentPlayerIndex;
         const prefix = `${team}-${jersey}`;
 
-        $(`[data-key="${prefix}-pts"]`).html(`${t.points || 0}<span class="text-muted ms-1" style="font-size:9px">PTS</span>`);
+        $(`[data-key="${prefix}-pts"]`).html(`${t.points || 0}<span class="text-white ms-1" style="font-size:9px">PTS</span>`);
         $(`[data-key="${prefix}-fouls"]`).text(`${t.fouls || 0}F`);
         $(`[data-key="${prefix}-fg"]`).text(`${t.fieldGoalsMade || 0}/${t.fieldGoalsAttempted || 0}`);
         $(`[data-key="${prefix}-3pt"]`).text(`${t.threePointersMade || 0}/${t.threePointersAttempted || 0}`);
@@ -413,7 +504,7 @@ function renderTeamStats(selector, a) {
 function renderEvents(events) {
     let html = '';
     if (!events || events.length === 0) {
-        html = '<div class="text-muted  text-white text-center py-4 small">No events yet</div>';
+        html = '<div class="text-white text-center py-4 small">No events yet</div>';
     } else {
         events.forEach(e => {
             const fullName = e.playerId?.firstName + " " + e.playerId?.lastName;
@@ -507,6 +598,7 @@ function updateClockDisplay() {
 function startClock() {
     if (clockInterval) return;
     isRunning = true;
+    updateControls();
     clockInterval = setInterval(() => {
         if (clockSeconds > 0) {
             clockSeconds--;
@@ -519,7 +611,11 @@ function startClock() {
 
 function stopClock() {
     isRunning = false;
-    if (clockInterval) { clearInterval(clockInterval); clockInterval = null; }
+    updateControls();
+    if (clockInterval) { 
+        clearInterval(clockInterval); 
+        clockInterval = null; 
+    }
 }
 
 // Game controls
@@ -561,7 +657,6 @@ $('#ctrl-resume').click(function () {
         data: JSON.stringify({ status: 'PLAYING' }),
         success: function (res) {
             gameData = res.game;
-            console.log(gameData);
             startClock();
             $('#ctrl-resume').addClass('d-none');
             $('#ctrl-pause').removeClass('d-none');
@@ -571,7 +666,6 @@ $('#ctrl-resume').click(function () {
 
 $('#ctrl-next-q').click(function () {
     stopClock();
-    console.log(gameData);
     const nextPeriod = (gameData.currentPeriod || 1) + 1;
     if (nextPeriod > 4 + (gameData.quarterScores?.overtimes?.length || 0)) return;
     clockSeconds = nextPeriod <= 4 ? 600 : 300;
@@ -593,6 +687,7 @@ $('#ctrl-next-q').click(function () {
             $('#ctrl-resume').removeClass('d-none');
         }
     });
+    //updateControls();
 });
 
 $('#ctrl-ot').click(function () {
