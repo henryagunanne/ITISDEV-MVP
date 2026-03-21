@@ -10,11 +10,21 @@ const User = require('../models/User');
 const { isAuthenticated } = require('../middleware/auth');
 
 // Dashboard
-router.get('/', isAuthenticated, (req, res) => {
-  res.render('pages/dashboard', { 
-      title: 'Green Archers Analytics - Dashboard',
-      user: req.session.user
-  });
+router.get('/', isAuthenticated, async (req, res) => {
+  try {
+    const tournaments = await Tournament.find().sort({ startDate: -1 }).lean();
+    res.render('pages/dashboard', { 
+        title: 'Green Archers Analytics - Dashboard',
+        user: req.session.user,
+        tournaments
+    });
+  } catch (err) {
+    res.render('pages/dashboard', { 
+        title: 'Green Archers Analytics - Dashboard',
+        user: req.session.user,
+        tournaments: []
+    });
+  }
 });
 
 // Statistics Encoding page

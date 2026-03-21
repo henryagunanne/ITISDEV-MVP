@@ -1361,6 +1361,136 @@ exports.exportCSV = async (req, res) => {
     res.send(csv);
 };
 
+// Unified endpoint for dashboard
+exports.getDashboardData = async (req, res) => {
+    try {
+        const { season } = req.query;
+        let matchStage = {};
+        
+        if (season) {
+            // season query parameter actually corresponds to Tournament name (e.g. "UAAP Season 87")
+            const Tournament = require('../models/Tournament');
+            const tournamentDoc = await Tournament.findOne({ name: season });
+            if (tournamentDoc) {
+                matchStage.tournament = tournamentDoc._id;
+            } else {
+                // If the user selected a season that doesn't exist, we should return empty data
+                return res.json({
+                    success: true,
+                    gamesPlayed: 0,
+                    avgPoints: 0,
+                    avgRebounds: 0,
+                    avgAssists: 0,
+                    avgTurnovers: 0,
+                    fgPercentage: 0,
+                    threePtPercentage: 0,
+                    ftPercentage: 0,
+                    record: { wins: 0, losses: 0 },
+                    perGameScoring: [],
+                    leaders: { topScorers: [], topRebounders: [], topAssists: [] }
+                });
+            }
+        }
+
+        // Get games matching the season
+        const games = await Game.find(matchStage).sort({ gameDate: 1 }).lean();
+        const gameIds = games.map(g => g._id);
+
+        let wins = 0;
+        let losses = 0;
+        let perGameScoring = [];
+
+        games.forEach(game => {
+            if (game.result === 'Win') wins++;
+            else if (game.result === 'Loss') losses++;
+            if (game.teamScore || game.opponentScore) {
+                perGameScoring.push({
+                    opponent: game.opponent,
+                    teamScore: game.teamScore || 0,
+                    opponentScore: game.opponentScore || 0
+                });
+            }
+        });
+
+        // Get aggregated stats
+        const aggregatedStats = await GameStats.aggregate([
+            { $match: { gameId: { $in: gameIds } } },
+            {
+                $group: {
+                    _id: null,
+                    totalPoints: { $sum: "$totals.points" },
+                    totalRebounds: { $sum: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
+                    totalAssists: { $sum: "$totals.assists" },
+                    totalTurnovers: { $sum: "$totals.turnovers" },
+                    totalFGM: { $sum: "$totals.fieldGoalsMade" },
+                    totalFGA: { $sum: "$totals.fieldGoalsAttempted" },
+                    total3PM: { $sum: "$totals.threePointersMade" },
+                    total3PA: { $sum: "$totals.threePointersAttempted" },
+                    totalFTM: { $sum: "$totals.freeThrowsMade" },
+                    totalFTA: { $sum: "$totals.freeThrowsAttempted" }
+                }
+            }
+        ]);
+
+        const stats = aggregatedStats[0] || {};
+        const numGames = games.length;
+
+        // Leaderboards logic
+        const playerStats = await GameStats.aggregate([
+            { $match: { gameId: { $in: gameIds } } },
+            {
+                $group: {
+                    _id: "$playerId",
+                    gamesPlayed: { $sum: 1 },
+                    totalPoints: { $sum: "$totals.points" },
+                    totalRebounds: { $sum: { $add: ["$totals.offensiveRebounds", "$totals.defensiveRebounds"] } },
+                    totalAssists: { $sum: "$totals.assists" }
+                }
+            },
+            {
+                $lookup: {
+                    from: "players",
+                    localField: "_id",
+                    foreignField: "_id",
+                    as: "player"
+                }
+            },
+            { $unwind: "$player" },
+            {
+                $project: {
+                    _id: 0,
+                    player: { firstName: "$player.firstName", lastName: "$player.lastName" },
+                    ppg: { $cond: [{ $eq: ["$gamesPlayed", 0] }, 0, { $divide: ["$totalPoints", "$gamesPlayed"] }] },
+                    rpg: { $cond: [{ $eq: ["$gamesPlayed", 0] }, 0, { $divide: ["$totalRebounds", "$gamesPlayed"] }] },
+                    apg: { $cond: [{ $eq: ["$gamesPlayed", 0] }, 0, { $divide: ["$totalAssists", "$gamesPlayed"] }] }
+                }
+            }
+        ]);
+
+        const topScorers = [...playerStats].sort((a, b) => b.ppg - a.ppg).slice(0, 5).map(s => ({ player: s.player, ppg: s.ppg.toFixed(1) }));
+        const topRebounders = [...playerStats].sort((a, b) => b.rpg - a.rpg).slice(0, 5).map(s => ({ player: s.player, rpg: s.rpg.toFixed(1) }));
+        const topAssists = [...playerStats].sort((a, b) => b.apg - a.apg).slice(0, 5).map(s => ({ player: s.player, apg: s.apg.toFixed(1) }));
+
+        res.json({
+            success: true,
+            gamesPlayed: numGames,
+            avgPoints: numGames ? stats.totalPoints / numGames : 0,
+            avgRebounds: numGames ? stats.totalRebounds / numGames : 0,
+            avgAssists: numGames ? stats.totalAssists / numGames : 0,
+            avgTurnovers: numGames ? stats.totalTurnovers / numGames : 0,
+            fgPercentage: stats.totalFGA ? (stats.totalFGM / stats.totalFGA) * 100 : 0,
+            threePtPercentage: stats.total3PA ? (stats.total3PM / stats.total3PA) * 100 : 0,
+            ftPercentage: stats.totalFTA ? (stats.totalFTM / stats.totalFTA) * 100 : 0,
+            record: { wins, losses },
+            perGameScoring,
+            leaders: { topScorers, topRebounders, topAssists }
+        });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+};
 
 // Export PDF reports
 const PDFDocument = require('pdfkit');

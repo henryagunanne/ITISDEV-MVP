@@ -6,6 +6,10 @@ const { isAuthenticated, authorize } = require('../middleware/auth');
 
 router.use(isAuthenticated);
 
+// ── Dashboard ────────────────────────────────────────────────
+// GET /api/analytics/dashboard
+// Returns all top cards, charts, and leaderboards data
+router.get('/dashboard', analyticsController.getDashboardData);
 
 // GET /api/analytics/summary - Returns the computed report summary
 router.get("/summary", analyticsController.reportSummary);
