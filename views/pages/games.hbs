@@ -87,7 +87,7 @@
                     {{#if ../isAdminOrCoach}}
                     <td>
                         <button class="edit-btn" onclick="openEditModal(this)">
-                            <i class="fas fa-edit"></i>
+                            <i class="fas fa-edit"></i> Edit
                         </button>
                         <button class="delete-btn" onclick="openDeleteModal('{{this._id}}', '{{this.opponent}}')">
                             <i class="fas fa-trash"></i>
@@ -115,27 +115,119 @@
         <h3 id="modalTitle">Add Game</h3>
         <div id="addErrorMsg" class="alert-msg mb-3" style="display:none;"></div>
         <form id="addGameForm" onsubmit="return false;">
-            <select id="addTournament" required>
-                <option value="">Select Tournament</option>
-                {{#each tournaments}}
-                <option value="{{this._id}}">{{this.name}} ({{this.league}} · S{{this.season}})</option>
-                {{/each}}
-            </select>
-            <input type="text" id="addOpponent" placeholder="Opponent Team" required>
-            <input type="text" id="addVenue" placeholder="Venue" required>
             <div class="form-row">
-                <input type="date" id="addDate" required>
-                <input type="time" id="addTime" required>
+                <div class="form-group">
+                    <select id="addTournament" required>
+                        <option value="" disabled selected></option>
+                        {{#each tournaments}}
+                        <option value="{{this._id}}">{{this.name}} ({{this.league}} · S{{this.season}})</option>
+                        {{/each}}
+                    </select>
+                    <label>Select Tournament</label>
+                </div>
             </div>
-            <select id="addStatus" required>
-                <option value="Scheduled">Scheduled</option>
-                <option value="Completed">Completed</option>
-                <option value="Cancelled">Cancelled</option>
-            </select>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <input type="text" id="addOpponent" placeholder=" " required>
+                    <label>Opponent Team</label>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="addVenue" placeholder=" " required>
+                    <label>Venue</label>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <input type="date" id="addDate" placeholder=" " required>
+                    <label>Game Date</label>
+                </div>
+                <div class="form-group">
+                    <input type="time" id="addStartTime" placeholder=" " required>
+                    <label>Start Time</label>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <select id="addStatus" required>
+                        <option value="NOT_STARTED">Not Started</option>
+                        <option value="PLAYING">Playing</option>
+                        <option value="PAUSED">Paused</option>
+                        <option value="ENDED">Ended</option>
+                        <option value="Scheduled">Scheduled</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+                    <label>Status</label>
+                </div>
+                <div class="form-group">
+                    <input type="number" id="addCurrentPeriod" placeholder=" " min="1" max="8" value="1">
+                    <label>Current Period</label>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <input type="text" id="addGameClock" placeholder=" " value="10:00" pattern="[0-9]{1,2}:[0-9]{2}">
+                    <label>Game Clock (mm:ss)</label>
+                </div>
+            </div>
+            
             <div class="form-row" id="addScoreRow">
-                <input type="number" id="addTeamScore" placeholder="Team Score" min="0" value="0">
-                <input type="number" id="addOppScore" placeholder="Opponent Score" min="0" value="0">
+                <div class="form-group">
+                    <input type="number" id="addTeamScore" placeholder=" " min="0" value="0">
+                    <label>Team Score</label>
+                </div>
+                <div class="form-group">
+                    <input type="number" id="addOppScore" placeholder=" " min="0" value="0">
+                    <label>Opponent Score</label>
+                </div>
             </div>
+            
+            <h4 style="margin-top: 1rem; margin-bottom: 0.5rem; font-size: 0.95rem;">Quarter Scores</h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <input type="number" id="addQ1Team" placeholder=" " min="0" value="0">
+                    <label>Q1 Team</label>
+                </div>
+                <div class="form-group">
+                    <input type="number" id="addQ1Opp" placeholder=" " min="0" value="0">
+                    <label>Q1 Opponent</label>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <input type="number" id="addQ2Team" placeholder=" " min="0" value="0">
+                    <label>Q2 Team</label>
+                </div>
+                <div class="form-group">
+                    <input type="number" id="addQ2Opp" placeholder=" " min="0" value="0">
+                    <label>Q2 Opponent</label>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <input type="number" id="addQ3Team" placeholder=" " min="0" value="0">
+                    <label>Q3 Team</label>
+                </div>
+                <div class="form-group">
+                    <input type="number" id="addQ3Opp" placeholder=" " min="0" value="0">
+                    <label>Q3 Opponent</label>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <input type="number" id="addQ4Team" placeholder=" " min="0" value="0">
+                    <label>Q4 Team</label>
+                </div>
+                <div class="form-group">
+                    <input type="number" id="addQ4Opp" placeholder=" " min="0" value="0">
+                    <label>Q4 Opponent</label>
+                </div>
+            </div>
+            
             <button type="button" id="saveGameBtn" onclick="addGame()">
                 <i class="fas fa-save me-1"></i> Save Game
             </button>
@@ -151,27 +243,119 @@
         <input type="hidden" id="editGameId">
         <div id="editErrorMsg" class="alert-msg mb-3" style="display:none;"></div>
         <form id="editGameForm" onsubmit="return false;">
-            <select id="editTournament" required>
-                <option value="">Select Tournament</option>
-                {{#each tournaments}}
-                <option value="{{this._id}}">{{this.name}} ({{this.league}} · S{{this.season}})</option>
-                {{/each}}
-            </select>
-            <input type="text" id="editOpponent" placeholder="Opponent Team" required>
-            <input type="text" id="editVenue" placeholder="Venue" required>
             <div class="form-row">
-                <input type="date" id="editDate" required>
-                <input type="time" id="editTime" required>
+                <div class="form-group">
+                    <select id="editTournament" required>
+                        <option value=""></option>
+                        {{#each tournaments}}
+                        <option value="{{this._id}}">{{this.name}} ({{this.league}} · S{{this.season}})</option>
+                        {{/each}}
+                    </select>
+                    <label>Select Tournament</label>
+                </div>
             </div>
-            <select id="editStatus" required>
-                <option value="Scheduled">Scheduled</option>
-                <option value="Completed">Completed</option>
-                <option value="Cancelled">Cancelled</option>
-            </select>
+
             <div class="form-row">
-                <input type="number" id="editTeamScore" placeholder="Team Score" min="0" value="0">
-                <input type="number" id="editOppScore" placeholder="Opponent Score" min="0" value="0">
+                <div class="form-group">
+                    <input type="text" id="editOpponent" placeholder=" " required>
+                    <label>Opponent Team</label>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="editVenue" placeholder=" " required>
+                    <label>Venue</label>
+                </div>
             </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <input type="date" id="editDate" placeholder=" " required>
+                    <label>Game Date</label>
+                </div>
+                <div class="form-group">
+                    <input type="time" id="editStartTime" placeholder=" " required>
+                    <label>Start Time</label>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <select id="editStatus" required>
+                        <option value="NOT_STARTED">Not Started</option>
+                        <option value="PLAYING">Playing</option>
+                        <option value="PAUSED">Paused</option>
+                        <option value="ENDED">Ended</option>
+                        <option value="Scheduled">Scheduled</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+                    <label>Status</label>
+                </div>
+                <div class="form-group">
+                    <input type="number" id="editCurrentPeriod" placeholder=" " min="1" max="8" value="1">
+                    <label>Current Period</label>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <input type="text" id="editGameClock" placeholder=" " value="10:00" pattern="[0-9]{1,2}:[0-9]{2}">
+                    <label>Game Clock (mm:ss)</label>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <input type="number" id="editTeamScore" placeholder=" " min="0" value="0">
+                    <label>Team Score</label>
+                </div>
+                <div class="form-group">
+                    <input type="number" id="editOppScore" placeholder=" " min="0" value="0">
+                    <label>Opponent Score</label>
+                </div>
+            </div>
+
+            <h4 style="margin-top: 1rem; margin-bottom: 0.5rem; font-size: 0.95rem;">Quarter Scores</h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <input type="number" id="editQ1Team" placeholder=" " min="0" value="0">
+                    <label>Q1 Team</label>
+                </div>
+                <div class="form-group">
+                    <input type="number" id="editQ1Opp" placeholder=" " min="0" value="0">
+                    <label>Q1 Opponent</label>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <input type="number" id="editQ2Team" placeholder=" " min="0" value="0">
+                    <label>Q2 Team</label>
+                </div>
+                <div class="form-group">
+                    <input type="number" id="editQ2Opp" placeholder=" " min="0" value="0">
+                    <label>Q2 Opponent</label>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <input type="number" id="editQ3Team" placeholder=" " min="0" value="0">
+                    <label>Q3 Team</label>
+                </div>
+                <div class="form-group">
+                    <input type="number" id="editQ3Opp" placeholder=" " min="0" value="0">
+                    <label>Q3 Opponent</label>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <input type="number" id="editQ4Team" placeholder=" " min="0" value="0">
+                    <label>Q4 Team</label>
+                </div>
+                <div class="form-group">
+                    <input type="number" id="editQ4Opp" placeholder=" " min="0" value="0">
+                    <label>Q4 Opponent</label>
+                </div>
+            </div>
+
             <button type="button" id="updateGameBtn" onclick="updateGame()">
                 <i class="fas fa-save me-1"></i> Update Game
             </button>

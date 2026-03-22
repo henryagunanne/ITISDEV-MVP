@@ -78,148 +78,185 @@ body {
   color: white;
 }
 
-.main { flex: 1; padding: 30px; }
-.dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.controls { display: flex; gap: 12px; align-items: center; }
+.main { flex: 1; padding: 25px; }
+.dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+.dashboard-header h2 { font-size: 22px; color: #0b5d3b; }
+.controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .controls input, .controls select {
-    padding: 8px;
+    padding: 10px 14px;
     border: 1px solid #ccc;
-    border-radius: 6px;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s;
 }
+.controls input:focus, .controls select:focus {
+    border-color: #0b5d3b;
+    box-shadow: 0 0 6px rgba(11, 93, 59, 0.3);
+}
+
 .add-game {
     background: #0b5d3b;
     color: white;
     border: none;
-    padding: 9px 16px;
-    border-radius: 6px;
+    padding: 10px 16px;
+    border-radius: 8px;
     font-weight: 600;
     cursor: pointer;
     display: flex;
     gap: 6px;
     align-items: center;
+    transition: background 0.2s;
 }
 .add-game:hover { background: #084b2f; }
 .table-container {
     background: white;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    padding: 0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 table { width: 100%; border-collapse: collapse; }
-th { background: #0b5d3b; color: white; padding: 12px; text-align: left; }
-td { padding: 10px; border-bottom: 1px solid #ddd; }
-.edit-btn { background: #ffc107; border: none; padding: 6px 10px; cursor: pointer; }
-.delete-btn { background: #dc3545; color: white; border: none; padding: 6px 10px; cursor: pointer; }
-.result { padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
-.result.win { background: #d4edda; color: #155724; }
-.result.loss { background: #f8d7da; color: #721c24; }
+th { background: #0b5d3b; color: white; padding: 14px 16px; text-align: left; font-size: 14px; letter-spacing: 0.5px; }
+td { padding: 16px; border-bottom: 1px solid #eee; font-size: 14px; vertical-align: middle; }
+#gamesTableBody tr:hover { background: #f9fafb; }
+
 
 .modal {
     display: none;
     position: fixed;
     top: 0; left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.45);
     justify-content: center;
     align-items: center;
     z-index: 1000;
-    transition: opacity 0.3s ease;
 }
 
 .modal-content {
     background: #fff;
-    padding: 30px 25px;
-    border-radius: 12px;
-    width: 450px;
-    max-width: 90%;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    padding: 35px 30px;
+    border-radius: 16px;
+    width: 500px;
+    max-width: 95%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.2);
     position: relative;
     animation: slideDown 0.3s ease forwards;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 @keyframes slideDown {
-    0% { transform: translateY(-50px); opacity: 0; }
+    0% { transform: translateY(-40px); opacity: 0; }
     100% { transform: translateY(0); opacity: 1; }
 }
 
 .close {
     position: absolute;
-    top: 12px;
-    right: 15px;
-    cursor: pointer;
+    top: 15px; right: 20px;
     font-size: 24px;
     color: #888;
+    cursor: pointer;
     transition: color 0.2s;
+    line-height: 1;
 }
 
-.close:hover {
-    color: #0b5d3b;
-}
+.close:hover { color: #0b5d3b; }
 
-#modalTitle {
-    font-size: 22px;
-    font-weight: 600;
-    margin-bottom: 20px;
+#modalTitle, .modal-content h3 {
+    font-size: 20px;
+    font-weight: 700;
     color: #0b5d3b;
     text-align: center;
+    margin-bottom: 8px;
 }
 
-#gameForm input,
-#gameForm select {
-    width: 100%;
-    padding: 12px 14px;
-    margin-bottom: 15px;
-    border-radius: 8px;
+/* Form groups */
+.form-group {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    margin-bottom: 5px;
+}
+
+.form-group input,
+.form-group select {
+    padding: 14px;
     border: 1px solid #ccc;
+    border-radius: 10px;
     font-size: 14px;
-    transition: border-color 0.2s, box-shadow 0.2s;
-    box-sizing: border-box; /* important for width calculations */
+    outline: none;
+    transition: 0.3s all;
+    width: 100%;
 }
 
-#gameForm input:focus,
-#gameForm select:focus {
-    outline: none;
+.form-group input:focus,
+.form-group select:focus {
     border-color: #0b5d3b;
-    box-shadow: 0 0 6px rgba(11, 93, 59, 0.3);
+    box-shadow: 0 4px 10px rgba(11,93,59,0.2);
+}
+
+.form-group label {
+    position: absolute;
+    left: 14px;
+    top: 14px;
+    color: #aaa;
+    font-size: 14px;
+    pointer-events: none;
+    background: white;
+    padding: 0 5px;
+    transition: 0.2s ease all;
+}
+
+.form-group input:focus + label,
+.form-group input:not(:placeholder-shown) + label,
+.form-group select:hover + label,
+.form-group select:not([value=""]) + label,
+.form-group select:focus + label {
+    top: -8px;
+    left: 10px;
+    font-size: 12px;
+    color: #0b5d3b;
 }
 
 .form-row {
     display: flex;
-    gap: 12px;
+    gap: 15px;
+    margin-bottom: 10px;
 }
 
-.form-row input {
-    flex: 1;
-    box-sizing: border-box; /* fix overflow */
-}
-
-#saveGameBtn {
-    width: 100%;
+#saveGameBtn, #updateGameBtn {
+    padding: 14px;
     background: #0b5d3b;
     color: white;
-    border: none;
-    padding: 12px;
-    font-size: 16px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background 0.2s, transform 0.1s;
     font-weight: 600;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-size: 15px;
+    margin-top: 8px;
+    width: 100%;
 }
 
-#saveGameBtn:hover {
+#saveGameBtn:hover, #updateGameBtn:hover {
     background: #084b2f;
-    transform: scale(1.02);
 }
+
 
 /* Status badges */
 .status-badge {
     display: inline-block;
-    padding: 3px 10px;
+    padding: 4px 12px;
     border-radius: 20px;
     font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 .status-Scheduled  { background: #cce5ff; color: #004085; }
 .status-Completed  { background: #d4edda; color: #155724; }
@@ -235,10 +272,11 @@ td { padding: 10px; border-bottom: 1px solid #ddd; }
     background: #0b5d3b;
     color: white;
     border: none;
-    padding: 6px 10px;
+    padding: 6px 12px;
+    font-size: 13px;
     border-radius: 6px;
     cursor: pointer;
-    margin-right: 5px;
+    margin-right: 6px;
     transition: background 0.2s;
 }
 .edit-btn:hover { background: #084b2f; }
@@ -247,7 +285,8 @@ td { padding: 10px; border-bottom: 1px solid #ddd; }
     background: #e74c3c;
     color: white;
     border: none;
-    padding: 6px 10px;
+    padding: 6px 12px;
+    font-size: 13px;
     border-radius: 6px;
     cursor: pointer;
     transition: background 0.2s;

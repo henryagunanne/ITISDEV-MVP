@@ -87,14 +87,26 @@ function toTimeInputValue(dateStr) {
 
 // ----- ADD GAME -----
 async function addGame() {
-    const tournament  = document.getElementById('addTournament').value;
-    const opponent    = document.getElementById('addOpponent').value.trim();
-    const venue       = document.getElementById('addVenue').value.trim();
-    const date        = document.getElementById('addDate').value;
-    const time        = document.getElementById('addTime').value;
-    const status      = document.getElementById('addStatus').value;
-    const teamScore   = Number(document.getElementById('addTeamScore').value || 0);
-    const oppScore    = Number(document.getElementById('addOppScore').value || 0);
+    const tournament     = document.getElementById('addTournament').value;
+    const opponent       = document.getElementById('addOpponent').value.trim();
+    const venue          = document.getElementById('addVenue').value.trim();
+    const date           = document.getElementById('addDate').value;
+    const time           = document.getElementById('addStartTime').value;
+    const status         = document.getElementById('addStatus').value;
+    const currentPeriod  = Number(document.getElementById('addCurrentPeriod').value || 1);
+    const gameClock      = document.getElementById('addGameClock').value || '10:00';
+    const teamScore      = Number(document.getElementById('addTeamScore').value || 0);
+    const oppScore       = Number(document.getElementById('addOppScore').value || 0);
+    
+    // Quarter scores
+    const q1Team = Number(document.getElementById('addQ1Team').value || 0);
+    const q1Opp  = Number(document.getElementById('addQ1Opp').value || 0);
+    const q2Team = Number(document.getElementById('addQ2Team').value || 0);
+    const q2Opp  = Number(document.getElementById('addQ2Opp').value || 0);
+    const q3Team = Number(document.getElementById('addQ3Team').value || 0);
+    const q3Opp  = Number(document.getElementById('addQ3Opp').value || 0);
+    const q4Team = Number(document.getElementById('addQ4Team').value || 0);
+    const q4Opp  = Number(document.getElementById('addQ4Opp').value || 0);
 
     const errEl = document.getElementById('addErrorMsg');
 
@@ -106,6 +118,14 @@ async function addGame() {
 
     const gameDate  = new Date(date).toISOString();
     const startTime = new Date(`${date}T${time}`).toISOString();
+    
+    const quarterScores = {
+        q1: { team: q1Team, opponent: q1Opp },
+        q2: { team: q2Team, opponent: q2Opp },
+        q3: { team: q3Team, opponent: q3Opp },
+        q4: { team: q4Team, opponent: q4Opp },
+        overtimes: []
+    };
 
     try {
         const res = await fetch('/api/games/create', {
@@ -118,8 +138,11 @@ async function addGame() {
                 gameDate,
                 startTime,
                 status,
+                currentPeriod,
+                gameClock,
                 teamScore,
-                opponentScore: oppScore
+                opponentScore: oppScore,
+                quarterScores
             })
         });
         const data = await res.json();
@@ -142,28 +165,66 @@ async function addGame() {
 // ----- EDIT GAME -----
 function openEditModal(btn) {
     const row = btn.closest('tr');
-    document.getElementById('editGameId').value      = row.dataset.id;
-    document.getElementById('editTournament').value  = row.dataset.tournament || '';
-    document.getElementById('editOpponent').value    = row.dataset.opponent || '';
-    document.getElementById('editVenue').value       = row.dataset.venue || '';
-    document.getElementById('editDate').value        = toDateInputValue(row.dataset.date);
-    document.getElementById('editTime').value        = toTimeInputValue(row.dataset.date);
-    document.getElementById('editStatus').value      = row.dataset.status || 'Scheduled';
-    document.getElementById('editTeamScore').value   = row.dataset.teamscore || 0;
-    document.getElementById('editOppScore').value    = row.dataset.opponentscore || 0;
-    openModal('editModal');
+    const gameId = row.dataset.id;
+    
+    // Fetch full game data to populate all fields including quarter scores
+    fetch(`/api/games/${gameId}`)
+        .then(res => res.json())
+        .then(data => {
+            const game = data.game;
+            document.getElementById('editGameId').value = gameId;
+            document.getElementById('editTournament').value = game.tournament?._id || '';
+            document.getElementById('editOpponent').value = game.opponent || '';
+            document.getElementById('editVenue').value = game.venue || '';
+            document.getElementById('editDate').value = toDateInputValue(game.gameDate);
+            document.getElementById('editStartTime').value = toTimeInputValue(game.startTime || game.gameDate);
+            document.getElementById('editStatus').value = game.status || 'Scheduled';
+            document.getElementById('editCurrentPeriod').value = game.currentPeriod || 1;
+            document.getElementById('editGameClock').value = game.gameClock || '10:00';
+            document.getElementById('editTeamScore').value = game.teamScore || 0;
+            document.getElementById('editOppScore').value = game.opponentScore || 0;
+            
+            // Quarter scores
+            const qs = game.quarterScores || {};
+            document.getElementById('editQ1Team').value = qs.q1?.team || 0;
+            document.getElementById('editQ1Opp').value = qs.q1?.opponent || 0;
+            document.getElementById('editQ2Team').value = qs.q2?.team || 0;
+            document.getElementById('editQ2Opp').value = qs.q2?.opponent || 0;
+            document.getElementById('editQ3Team').value = qs.q3?.team || 0;
+            document.getElementById('editQ3Opp').value = qs.q3?.opponent || 0;
+            document.getElementById('editQ4Team').value = qs.q4?.team || 0;
+            document.getElementById('editQ4Opp').value = qs.q4?.opponent || 0;
+            
+            openModal('editModal');
+        })
+        .catch(err => {
+            console.error('Error loading game data:', err);
+            showToast('Error loading game data', true);
+        });
 }
 
 async function updateGame() {
-    const id          = document.getElementById('editGameId').value;
-    const tournament  = document.getElementById('editTournament').value;
-    const opponent    = document.getElementById('editOpponent').value.trim();
-    const venue       = document.getElementById('editVenue').value.trim();
-    const date        = document.getElementById('editDate').value;
-    const time        = document.getElementById('editTime').value;
-    const status      = document.getElementById('editStatus').value;
-    const teamScore   = Number(document.getElementById('editTeamScore').value || 0);
-    const oppScore    = Number(document.getElementById('editOppScore').value || 0);
+    const id             = document.getElementById('editGameId').value;
+    const tournament     = document.getElementById('editTournament').value;
+    const opponent       = document.getElementById('editOpponent').value.trim();
+    const venue          = document.getElementById('editVenue').value.trim();
+    const date           = document.getElementById('editDate').value;
+    const time           = document.getElementById('editStartTime').value;
+    const status         = document.getElementById('editStatus').value;
+    const currentPeriod  = Number(document.getElementById('editCurrentPeriod').value || 1);
+    const gameClock      = document.getElementById('editGameClock').value || '10:00';
+    const teamScore      = Number(document.getElementById('editTeamScore').value || 0);
+    const oppScore       = Number(document.getElementById('editOppScore').value || 0);
+    
+    // Quarter scores
+    const q1Team = Number(document.getElementById('editQ1Team').value || 0);
+    const q1Opp  = Number(document.getElementById('editQ1Opp').value || 0);
+    const q2Team = Number(document.getElementById('editQ2Team').value || 0);
+    const q2Opp  = Number(document.getElementById('editQ2Opp').value || 0);
+    const q3Team = Number(document.getElementById('editQ3Team').value || 0);
+    const q3Opp  = Number(document.getElementById('editQ3Opp').value || 0);
+    const q4Team = Number(document.getElementById('editQ4Team').value || 0);
+    const q4Opp  = Number(document.getElementById('editQ4Opp').value || 0);
 
     const errEl = document.getElementById('editErrorMsg');
 
@@ -175,6 +236,14 @@ async function updateGame() {
 
     const gameDate  = new Date(date).toISOString();
     const startTime = new Date(`${date}T${time}`).toISOString();
+    
+    const quarterScores = {
+        q1: { team: q1Team, opponent: q1Opp },
+        q2: { team: q2Team, opponent: q2Opp },
+        q3: { team: q3Team, opponent: q3Opp },
+        q4: { team: q4Team, opponent: q4Opp },
+        overtimes: []
+    };
 
     try {
         const res = await fetch(`/api/games/${id}`, {
@@ -187,8 +256,11 @@ async function updateGame() {
                 gameDate,
                 startTime,
                 status,
+                currentPeriod,
+                gameClock,
                 teamScore,
-                opponentScore: oppScore
+                opponentScore: oppScore,
+                quarterScores
             })
         });
         const data = await res.json();
