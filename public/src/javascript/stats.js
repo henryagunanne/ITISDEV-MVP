@@ -10,10 +10,10 @@ let isRunning = false;
 let debouncing = {};
 let quarter = null;
 
-// ===================== SETUP PAGE =====================
 
 $(document).ready(function () {
 
+    // IF IT IS THE GAME SETUP PAGE
     if ($('#setup-page').length) {
         loadHomePlayers();
         addOpponentRow();
@@ -27,6 +27,7 @@ $(document).ready(function () {
         
     }
 
+    // IF IT IS THE LIVE GAME INPUT PAGE
     if ($('#game-page').length) {
         const params = new URLSearchParams(window.location.search);
         gameId = params.get('gameId');
@@ -37,6 +38,21 @@ $(document).ready(function () {
         }
 
         fetchGameDetails(); 
+
+        // Drag and drop players to sub
+        new Sortable(document.getElementById('home-players-panel'), {
+            animation: 150,
+            onEnd: function () {
+                syncOnCourtFromOrder('#home-players-panel');
+            }
+        });
+        
+        new Sortable(document.getElementById('opp-players-panel'), {
+            animation: 150,
+            onEnd: function () {
+                syncOnCourtFromOrder('#opp-players-panel');
+            }
+        });
     }
 
 
@@ -48,6 +64,7 @@ $(document).ready(function () {
         }
     });
 });
+
 
 function loadHomePlayers() {
     $.get(`${API}/api/players/active`, function (res) {
@@ -83,6 +100,7 @@ function addOpponentRow() {
     updatePlayerCount();
 }
 
+
 $(document).on('click', '.remove-opp-row', function () {
     if ($('.opp-player-entry').length > 5) {
         $(this).closest('.opp-player-entry').remove();
@@ -102,6 +120,7 @@ function updatePlayerCount() {
 
 $('#opponent-name').on('input', updatePlayerCount);
 
+
 function getOpponentPlayersFromForm() {
     const players = [];
     $('.opp-player-entry').each(function () {
@@ -113,6 +132,7 @@ function getOpponentPlayersFromForm() {
     });
     return players;
 }
+
 
 function startGame() {
     const opponent = $('#opponent-name').val().trim();
@@ -262,6 +282,27 @@ function playerRowHTML(playerId, jersey, name, position, team, onCourt, photo) {
 }
 
 
+function syncOnCourtFromOrder(selector) {
+    const rows = $(selector).find('.player-row');
+
+    rows.each(function (index) {
+        const isStarter = index < 5;
+        const team = $(this).data('team');
+        // const subBtn = $(this).find('.sub-btn');
+
+        $(this).data('oncourt', isStarter);
+
+        if (isStarter) {
+            $(this).addClass(team === 'lasalle' ? 'on-court' : 'on-court-opp');
+        } else {
+            $(this).removeClass('on-court on-court-opp');
+        }
+
+        // recordStat(subBtn, 'substitution');
+    });
+
+}
+
 
 function updateControls() {
     const period = gameData?.currentPeriod || 0;
@@ -338,6 +379,7 @@ function updateControls() {
             // Other cases - toggle + record stat
             $('.sub-btn').on('click', function () {
                 toggleOnCourt(this);
+
                 recordStat(this, 'substitution');
             });
         }
@@ -345,12 +387,51 @@ function updateControls() {
     
 }
 
+// Helper to move player row up or down when substitution is made
+function reorderPlayers(container) {
+    const rows = container.find('.player-row');
+
+    const onCourt = [];
+    const bench = [];
+
+    rows.each(function () {
+        if ($(this).data('oncourt')) onCourt.push(this);
+        else bench.push(this);
+    });
+
+
+    // Add starters first
+    onCourt.forEach(r => container.append(r));
+
+    // Then bench
+    bench.forEach(r => container.append(r));
+}
+
+
+// Helper to Limit player on court to 5
+function getOnCourtCount(container) {
+    return container.find('.player-row').filter(function () {
+        return $(this).data('oncourt') === true;
+    }).length;
+}
+
+
+// Function to toggle substitution
 window.toggleOnCourt = function (btn) {
     const row = $(btn).closest('.player-row');
+    const container = row.parent();
     const isOn = row.data('oncourt');
-    row.data('oncourt', !isOn);
-
     const team = row.data('team');
+
+    const onCourtCount = getOnCourtCount(container);
+
+    // Prevent more than 5 players
+    if (!isOn && onCourtCount >= 5) {
+        alert("Only 5 players allowed on the court!");
+        return;
+    }
+
+    row.data('oncourt', !isOn);
 
     if (!isOn) {
         row.addClass(team === 'lasalle' ? 'on-court' : 'on-court-opp');
@@ -358,6 +439,7 @@ window.toggleOnCourt = function (btn) {
         row.removeClass('on-court on-court-opp');
     }
 
+    reorderPlayers(container);
 }
 
 // ===================== STAT RECORDING =====================
@@ -422,7 +504,9 @@ function undoLast() {
     });
 }
 
+
 $('#undo-btn').click(undoLast);
+
 
 // ===================== UI UPDATES =====================
 

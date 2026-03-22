@@ -52,6 +52,9 @@ tournamentSchema.virtual('dateRange').get(function () {
     return end ? `${start} - ${end}` : start;
 });
 
+tournamentSchema.set('toJSON', { virtuals: true });
+tournamentSchema.set('toObject', { virtuals: true });
+
 // Automatically populate user reference
 tournamentSchema.pre('find', function () {
     this.populate('createdBy', 'username'); // Populate createdBy with username only

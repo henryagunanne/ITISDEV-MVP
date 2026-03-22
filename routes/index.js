@@ -137,7 +137,28 @@ router.get('/analytics', isAuthenticated, async (req, res) => {
   res.render("pages/analytics", {
     title: 'Reports & Analytics'
   });
-})
+});
+
+
+// Render users management page with users
+router.get("/users", isAuthenticated, async (req, res) => {
+    const users = await User.find();
+    res.render("pages/users", {
+        title: 'User Account Management',
+        users
+    });
+});
+
+
+// Render tournaments page with tournament view
+router.get("/tournaments", isAuthenticated, async (req, res) => {
+  const tournaments = await Tournament.find().sort({ createdAt: -1 }).lean();
+
+  res.render("pages/tournament", {
+      title: 'Tournaments',
+      tournaments
+  });
+});
 
 
 // Render user profile

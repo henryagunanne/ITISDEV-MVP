@@ -150,7 +150,6 @@ gameSchema.methods.calculateFinalScore = function () {
     } else if (this.teamScore < this.opponentScore) {
         this.result = "Loss";
     } 
-
 };
 
 

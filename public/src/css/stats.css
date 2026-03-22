@@ -20,7 +20,7 @@ body { font-family: 'Inter', sans-serif; background: #ffffff; color: #e2e8f0; }
     transition: border-color 0.2s;
 }
 .player-row:hover { border-color: #4a4f6a; }
-.player-row.on-court { border-left: 3px solid var(--home); }
+.player-row.on-court { border-left: 3px solid var(--score-green); }
 .player-row.on-court-opp { border-left: 3px solid var(--opponent); }
 .player-row.foul-warning { background: rgba(239, 68, 68, 0.08); }
 

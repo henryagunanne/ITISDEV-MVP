@@ -246,6 +246,7 @@ exports.updateGameStatus = async (req, res) => {
         if (req.body.currentPeriod) updates.currentPeriod = req.body.currentPeriod;
         if (req.body.gameClock) updates.gameClock = req.body.gameClock;
 
+
         const game = await Game.findByIdAndUpdate(req.params.gameId, updates, { returnDocument: 'after' });
         res.json(game);
     } catch (err) {

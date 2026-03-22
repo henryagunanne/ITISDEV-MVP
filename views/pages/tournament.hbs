@@ -1,0 +1,132 @@
+<link rel="stylesheet" href="/src/css/admin.css">
+
+<main class="col-md-10 ms-auto px-4 py-4">
+    <div class="container mt-4">
+        <h2>Tournament Management</h2>
+
+        <!-- ADD TOURNAMENT -->
+        <form id="createTournamentForm" method="POST" class="mb-4" novalidate>
+            <div class="row g-2">
+                <div class="col">
+                    <input type="text" name="name" class="form-control" placeholder="Tournament Name" minlength="2" required>
+                    <div class="invalid-feedback">Enter a Tournament Name.</div>
+                </div>
+
+                <div class="col">
+                    <select name="league" class="form-control" required>
+                        <option value="">League</option>
+                        <option value="UAAP">UAAP</option>
+                        <option value="NCAA">NCAA</option>
+                        <option value="Preseason">Preseason</option>
+                        <option value="Tune-Up">Tune-Up</option>
+                    </select>
+                    <div class="invalid-feedback">Select a League.</div>
+                </div>
+
+                <div class="col">
+                    <input type="text" name="season" class="form-control" placeholder="Season (e.g. 2025)" required>
+                    <div class="invalid-feedback">Season is required.</div>
+                </div>
+
+                <div class="col">
+                    <input type="text" name="startDate" id="startDate" class="form-control" placeholder="Start Date" required>
+                </div>
+
+                <div class="col">
+                    <input type="text" name="endDate" id="endDate" placeholder="End Date" class="form-control">
+                </div>
+
+                <div class="col-12 mt-2">
+                    <textarea name="description" class="form-control" placeholder="Description"></textarea>
+                </div>
+
+                <div class="col-12 mt-2">
+                    <button class="btn btn-success w-100">Add Tournament</button>
+                </div>
+            </div>
+        </form>
+
+        <!-- TABLE -->
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>League</th>
+                    <th>Season</th>
+                    <th>Date</th>
+                    <th>Created By</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each tournaments}}
+                <tr>
+                    <td>{{this.name}}</td>
+                    <td>{{this.league}}</td>
+                    <td>{{this.season}}</td>
+                    <td>{{this.dateRange}}</td>
+                    <td>{{this.createdBy.username}}</td>
+
+                    <td>
+                        <button 
+                            type="button"
+                            class="btn btn-warning btn-sm edit-tournament-btn"
+                            data-id="{{this._id}}"
+                            data-name="{{this.name}}"
+                            data-league="{{this.league}}"
+                            data-season="{{this.season}}"
+                            data-description="{{this.description}}"
+                            data-start="{{this.startDate}}"
+                            data-end="{{this.endDate}}">
+                            Edit
+                        </button>
+
+                        <form action="/tournaments/delete/{{this._id}}" method="POST" class="d-inline">
+                            <button class="btn btn-danger btn-sm delete-tournament-btn">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+</main>
+
+<div class="modal fade" id="editTournamentModal">
+    <div class="modal-dialog">
+        <form method="POST" id="editTournamentForm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5>Edit Tournament</h5>
+                </div>
+
+                <div class="modal-body">
+                    <input type="hidden" id="editId">
+
+                    <input id="editName" name="name" class="form-control mb-2" required>
+                    
+                    <select id="editLeague" name="league" class="form-control mb-2">
+                        <option>UAAP</option>
+                        <option>NCAA</option>
+                        <option>Preseason</option>
+                        <option>Tune-Up</option>
+                    </select>
+
+                    <input id="editSeason" name="season" class="form-control mb-2">
+
+                    <textarea id="editDescription" name="description" class="form-control mb-2"></textarea>
+
+                    <input type="date" id="editStartDate" name="startDate" class="form-control mb-2">
+                    <input type="date" id="editEndDate" name="endDate" class="form-control">
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-primary">Save</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="/src/javascript/tournament.js"></script>

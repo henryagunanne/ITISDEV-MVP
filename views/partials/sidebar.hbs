@@ -52,6 +52,17 @@
             </a>
         </li>
         <li class="nav-item">
+            <a class="nav-link {{#if (startsWith activePath '/tournaments')}}active{{/if}}" href="/tournaments">
+                <i class="fas fa-trophy"></i>Tournaments
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link {{#if (startsWith activePath '/users')}}active{{/if}}" href="/users">
+                <i class="fas fa-user-cog"></i>Users
+            </a>
+        </li>
+        <li class="nav-item">
             <a class="nav-link {{#if (startsWith activePath '/analytics')}}active{{/if}}" href="/analytics">
                 <i class="fas fa-file-alt"></i>Reports
             </a>

@@ -28,7 +28,8 @@ router.get('/start-game', async (req, res) => {
 
     res.render("pages/setup", {
         title: "Create Game",
-        tournaments: tournaments
+        tournaments: tournaments,
+        activePath: "/gameStats"
     });
 });
 
@@ -43,7 +44,8 @@ router.get('/encode-stats',  async (req, res) => {
     gameClock = game.gameClock;
     res.render("pages/stats", {
         title: "Live Stat Encoding",
-        gameClock
+        gameClock,
+        activePath: "/gameStats"
     });
 });
 

@@ -1,0 +1,82 @@
+/* Page Titles
+    This file handles Users and Tournament Pages
+*/
+
+h2 {
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+/* Forms */
+form input,
+form select,
+form textarea {
+    border-radius: 8px !important;
+    font-size: 14px;
+}
+
+/* Buttons */
+.btn {
+    border-radius: 8px;
+    font-size: 13px;
+}
+
+/* Table Styling */
+.table {
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.table th {
+    background: #f5f6fa;
+    font-weight: 600;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+/* Badge Styles */
+.badge-role {
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+}
+
+.badge-admin {
+    background: #2c7be5;
+    color: #fff;
+}
+
+.badge-coach {
+    background: #00a854;
+    color: #fff;
+}
+
+.badge-stat {
+    background: #fa8c16;
+    color: #fff;
+}
+
+/* Status */
+.status-active {
+    color: green;
+    font-weight: 600;
+}
+
+.status-inactive {
+    color: red;
+    font-weight: 600;
+}
+
+/* Modal */
+.modal-content {
+    border-radius: 12px;
+}
+
+/* Hover effect */
+.table tbody tr:hover {
+    background: #f9f9f9;
+    cursor: pointer;
+}
