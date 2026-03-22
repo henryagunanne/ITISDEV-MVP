@@ -125,28 +125,38 @@ td { padding: 16px; border-bottom: 1px solid #eee; font-size: 14px; vertical-ali
 .modal {
     display: none;
     position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: rgba(0,0,0,0.45);
+    z-index: 1000;
+    left: 0; top: 0; right: 0; bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.35);
     justify-content: center;
     align-items: center;
-    z-index: 1000;
 }
 
+/* Modal content */
 .modal-content {
     background: #fff;
-    padding: 35px 30px;
-    border-radius: 16px;
-    width: 500px;
-    max-width: 95%;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    box-shadow: 0 15px 40px rgba(0,0,0,0.2);
-    position: relative;
-    animation: slideDown 0.3s ease forwards;
+    border-radius: 8px;
+    padding: 32px 24px 24px 24px;
+    width: 420px;           /* Set a fixed width for all modals */
+    max-width: 95vw;
     max-height: 90vh;
     overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    position: relative;
+    margin: auto;
+}
+
+/* Close button */
+.modal-content .close {
+    position: absolute;
+    right: 18px;
+    top: 14px;
+    font-size: 22px;
+    color: #888;
+    cursor: pointer;
+    font-weight: bold;
 }
 
 @keyframes slideDown {
@@ -269,17 +279,22 @@ td { padding: 16px; border-bottom: 1px solid #eee; font-size: 14px; vertical-ali
 
 /* Edit / Delete action buttons */
 .edit-btn {
-    background: #0b5d3b;
-    color: white;
+    background: #f1c40f;
+    color: #222;
     border: none;
-    padding: 6px 12px;
-    font-size: 13px;
-    border-radius: 6px;
+    padding: 6px 14px;
+    border-radius: 4px;
+    margin-right: 4px;
     cursor: pointer;
-    margin-right: 6px;
+    font-size: 14px;
     transition: background 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
-.edit-btn:hover { background: #084b2f; }
+.edit-btn:hover, .edit-btn:focus {
+    background: #d4ac0d;
+}
 
 .delete-btn {
     background: #e74c3c;
@@ -346,4 +361,36 @@ td { padding: 16px; border-bottom: 1px solid #eee; font-size: 14px; vertical-ali
 @keyframes fadeInUp {
     from { transform: translateY(20px); opacity: 0; }
     to   { transform: translateY(0);    opacity: 1; }
+}
+
+.view-btn {
+    background: #3498db;
+    color: #fff;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 4px;
+    margin-right: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.view-btn:hover, .view-btn:focus {
+    background: #217dbb;
+}
+
+.quarter-scores-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.5rem;
+}
+.quarter-scores-table th, .quarter-scores-table td {
+    border: 1px solid #ddd;
+    padding: 4px 8px;
+    text-align: center;
+}
+.quarter-scores-table th {
+    background: #f4f4f4;
 }

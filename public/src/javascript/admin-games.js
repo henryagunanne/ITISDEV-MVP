@@ -291,12 +291,15 @@ function openDeleteModal(id, opponent) {
 async function confirmDelete() {
     const id = document.getElementById('deleteGameId').value;
     try {
-        const res = await fetch(`/api/games/${id}`, { method: 'DELETE' });
+        const res = await fetch(`/api/games/${id}`, {
+            method: 'DELETE',
+            credentials: 'same-origin' // <-- ADD THIS LINE
+        });
         const data = await res.json();
 
         closeModal('deleteModal');
-        if (!res.ok) {
-            showToast(data.message || 'Cannot delete game.', true);
+        if (!res.ok || !data.success) {
+            showToast(data.message || 'Failed to delete game.', true);
             return;
         }
         showToast('Game deleted successfully!');
@@ -306,3 +309,126 @@ async function confirmDelete() {
         showToast('Network error. Please try again.', true);
     }
 }
+
+// --- VIEW GAME FUNCTIONALITY ---
+
+function openViewModal(gameId) {
+    document.getElementById('viewModal').style.display = 'block';
+    document.getElementById('viewGameDetails').innerHTML = '<p>Loading...</p>';
+
+    fetch(`/api/games/${gameId}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.game) {
+                const game = data.game;
+                // Format quarter scores
+                const qs = game.quarterScores || {};
+                let quarterScoresHtml = `
+                    <tr>
+                        <th>Quarter</th>
+                        <th>Team</th>
+                        <th>Opponent</th>
+                    </tr>
+                    <tr>
+                        <td>Q1</td>
+                        <td>${qs.q1?.team ?? 0}</td>
+                        <td>${qs.q1?.opponent ?? 0}</td>
+                    </tr>
+                    <tr>
+                        <td>Q2</td>
+                        <td>${qs.q2?.team ?? 0}</td>
+                        <td>${qs.q2?.opponent ?? 0}</td>
+                    </tr>
+                    <tr>
+                        <td>Q3</td>
+                        <td>${qs.q3?.team ?? 0}</td>
+                        <td>${qs.q3?.opponent ?? 0}</td>
+                    </tr>
+                    <tr>
+                        <td>Q4</td>
+                        <td>${qs.q4?.team ?? 0}</td>
+                        <td>${qs.q4?.opponent ?? 0}</td>
+                    </tr>
+                `;
+                if (qs.overtimes && qs.overtimes.length > 0) {
+                    qs.overtimes.forEach((ot, idx) => {
+                        quarterScoresHtml += `
+                            <tr>
+                                <td>OT${idx + 1}</td>
+                                <td>${ot.team ?? 0}</td>
+                                <td>${ot.opponent ?? 0}</td>
+                            </tr>
+                        `;
+                    });
+                }
+
+                document.getElementById('viewGameDetails').innerHTML = `
+                    <p><strong>Opponent:</strong> ${game.opponent}</p>
+                    <p><strong>Start Time:</strong> ${game.startTime ? new Date(game.startTime).toLocaleString() : '—'}</p>
+                    <p><strong>Current Period:</strong> ${game.currentPeriod ?? '—'}</p>
+                    <p><strong>Game Clock:</strong> ${game.gameClock ?? '—'}</p>
+                    <p><strong>Status:</strong> ${game.status ?? '—'}</p>
+                    <h4 style="margin-top:1rem;">Quarter Scores</h4>
+                    <table class="quarter-scores-table" style="width:100%;border-collapse:collapse;">
+                        ${quarterScoresHtml}
+                    </table>
+                `;
+            } else {
+                document.getElementById('viewGameDetails').innerHTML = '<p class="text-danger">Unable to load game details.</p>';
+            }
+        })
+        .catch(() => {
+            document.getElementById('viewGameDetails').innerHTML = '<p class="text-danger">Unable to load game details.</p>';
+        });
+}
+
+// Close view modal
+document.getElementById('closeViewModal').onclick = function() {
+    document.getElementById('viewModal').style.display = 'none';
+};
+
+// --- DELETE FUNCTIONALITY ---
+
+function openDeleteModal(id, opponent) {
+    document.getElementById('deleteGameId').value = id;
+    document.getElementById('deleteConfirmText').textContent = `Are you sure you want to delete the game vs. ${opponent}?`;
+    document.getElementById('deleteModal').style.display = 'block';
+}
+
+document.getElementById('cancelDeleteBtn').onclick = function() {
+    document.getElementById('deleteModal').style.display = 'none';
+};
+
+document.getElementById('closeDeleteModal').onclick = function() {
+    document.getElementById('deleteModal').style.display = 'none';
+};
+
+function confirmDelete() {
+    const gameId = document.getElementById('deleteGameId').value;
+    fetch(`/api/games/${gameId}`, {
+        method: 'DELETE'
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Game deleted successfully.');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast('Failed to delete game.', true);
+        }
+    })
+    .catch(() => {
+        showToast('Failed to delete game.', true);
+    });
+}
+
+// --- TOAST FUNCTION ---
+function showToast(message, isError) {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.style.backgroundColor = isError ? '#d9534f' : '#28a745';
+    toast.style.display = 'block';
+    setTimeout(() => { toast.style.display = 'none'; }, 2000);
+}
+
+// --- (Keep your existing code for edit/add as is) ---

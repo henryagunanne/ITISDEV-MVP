@@ -14,9 +14,10 @@
             </select>
             <select id="filterStatus">
                 <option value="">All Status</option>
-                <option value="Scheduled">Scheduled</option>
-                <option value="Completed">Completed</option>
-                <option value="Cancelled">Cancelled</option>
+                <option value="NOT_STARTED">Not Started</option>
+                <option value="PLAYING">Playing</option>
+                <option value="PAUSED">Paused</option>
+                <option value="ENDED">Ended</option>
             </select>
             {{#if isAdminOrCoach}}
             <button class="add-game" id="openAddModal">
@@ -86,6 +87,9 @@
                     </td>
                     {{#if ../isAdminOrCoach}}
                     <td>
+                        <button class="view-btn" onclick="openViewModal('{{this._id}}')">
+                            <i class="fas fa-eye"></i> View
+                        </button>
                         <button class="edit-btn" onclick="openEditModal(this)">
                             <i class="fas fa-edit"></i> Edit
                         </button>
@@ -156,9 +160,6 @@
                         <option value="PLAYING">Playing</option>
                         <option value="PAUSED">Paused</option>
                         <option value="ENDED">Ended</option>
-                        <option value="Scheduled">Scheduled</option>
-                        <option value="Completed">Completed</option>
-                        <option value="Cancelled">Cancelled</option>
                     </select>
                     <label>Status</label>
                 </div>
@@ -375,6 +376,17 @@
             <button class="delete-confirm-btn" onclick="confirmDelete()">
                 <i class="fas fa-trash me-1"></i> Delete
             </button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== VIEW GAME MODAL ===== -->
+<div class="modal" id="viewModal">
+    <div class="modal-content">
+        <span class="close" id="closeViewModal">&times;</span>
+        <h3>Game Details</h3>
+        <div id="viewGameDetails" style="margin-top:1rem;">
+            <!-- Game stats/details will be populated here by JS -->
         </div>
     </div>
 </div>

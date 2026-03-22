@@ -888,26 +888,13 @@ exports.updateGame = async (req, res) => {
 // Delete Game - deletes a game by its ID. This should also handle cascading deletes or cleanup of related data (e.g., game stats) if necessary.
 exports.deleteGame = async (req, res) => {
     try {
-        const gameId = req.params.id; // Get game ID from URL parameters
-        const game = await Game.findByIdAndDelete(gameId);
-
+        const game = await Game.findByIdAndDelete(req.params.gameId);
         if (!game) {
-            return res.status(404).json({
-                success: false,
-                message: "Game not found"
-            });
+            return res.status(404).json({ success: false, message: "Game not found." });
         }
-
-        res.status(200).json({
-            success: true,
-            message: "Game deleted successfully"
-        });
+        return res.json({ success: true });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Error deleting game",
-            error: error.message
-        });
+        return res.status(500).json({ success: false, message: "Error deleting game.", error: error.message });
     }
 };
 
