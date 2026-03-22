@@ -392,5 +392,9 @@ td { padding: 16px; border-bottom: 1px solid #eee; font-size: 14px; vertical-ali
     text-align: center;
 }
 .quarter-scores-table th {
-    background: #f4f4f4;
+    background: #e0e3e8;         /* Slightly darker for more contrast */
+    color: #222;                 /* Darker text for better readability */
+    font-weight: 700;            /* Make header text bold */
+    border-bottom: 2px solid #bfc4cc; /* Stronger bottom border */
+    font-size: 15px;             /* Slightly larger font if desired */
 }
