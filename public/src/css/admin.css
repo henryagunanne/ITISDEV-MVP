@@ -71,9 +71,86 @@ form textarea {
 }
 
 /* Modal */
-.modal-content {
-    border-radius: 12px;
+
+
+.modal {
+    display: none;
+
+    position: fixed;
+    left: 0; top: 0; right: 0; bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.35);
+    justify-content: center;
+    align-items: center;
 }
+
+/* Modal content */
+.modal-content {
+    background: #fff;
+    border-radius: 8px;
+    padding: 32px 24px 24px 24px;
+    width: 420px;           /* Set a fixed width for all modals */
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    position: relative;
+    margin: auto;
+}
+
+/* Close button */
+.modal-content .close {
+    position: absolute;
+    right: 18px;
+    top: 14px;
+    font-size: 22px;
+    color: #888;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+
+/* Cancel & delete confirm buttons */
+.cancel-btn {
+    padding: 10px 24px;
+    background: #e2e3e5;
+    color: #333;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+}
+.delete-confirm-btn {
+    padding: 10px 24px;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+}
+.delete-confirm-btn:hover { background: #c0392b; }
+
+@keyframes slideDown {
+    0% { transform: translateY(-40px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+
+.close {
+    position: absolute;
+    top: 15px; right: 20px;
+    font-size: 24px;
+    color: #888;
+    cursor: pointer;
+    transition: color 0.2s;
+    line-height: 1;
+}
+
+.close:hover { color: #0b5d3b; }
+
 
 /* Hover effect */
 .table tbody tr:hover {
@@ -92,7 +169,7 @@ form textarea {
     font-size: 14px;
     font-weight: 600;
     box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-    z-index: 9999;
+
     max-width: calc(100vw - 60px);
     word-wrap: break-word;
     animation: fadeInUp 0.3s ease;

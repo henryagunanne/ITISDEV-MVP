@@ -1,0 +1,138 @@
+<link rel="stylesheet" href="/src/css/admin.css">
+
+<main class="col-md-10 ms-auto px-4 py-4">
+    <div class="container mt-4">
+        <h2>User Management</h2>
+
+        <!-- ADD USER -->
+        <form id="createUserForm" class="mb-4 needs-validation" novalidate>
+            <div class="row g-2">
+
+                <div class="col">
+                    <input type="text" name="firstName" class="form-control" placeholder="First Name" minlength="2" required>
+                    <div class="invalid-feedback">Enter a valid first name.</div>
+                </div>
+
+                <div class="col">
+                    <input type="text" name="lastName" class="form-control" placeholder="Last Name" minlength="2" required>
+                    <div class="invalid-feedback">Enter a valid last name.</div>
+                </div>
+
+                <div class="col">
+                    <input type="text" name="username" class="form-control" placeholder="Username" minlength="3" required>
+                    <div class="invalid-feedback">Username must be at least 3 characters.</div>
+                </div>
+
+                <div class="col">
+                    <input type="email" name="email" class="form-control" placeholder="Email" required>
+                    <div class="invalid-feedback">Enter a valid email address.</div>
+                </div>
+
+                <div class="col">
+                    <input type="password" id="password" name="password" class="form-control" minlength="8" placeholder="Password" required>
+                    <div class="invalid-feedback">Password must be at least 8 characters.</div>
+                </div>
+
+                <div class="col">
+                    <input type="password" id="confirmPassword" class="form-control" placeholder="Confirm Password" required>
+                    <div class="invalid-feedback">Passwords must match.</div>
+                </div>
+
+                <div class="col">
+                    <select name="role" class="form-control" required>
+                        <option value="" selected disabled>Select Role</option>
+                        <option value="Admin">Admin</option>
+                        <option value="Coach">Coach</option>
+                        <option value="Statistician">Statistician</option>
+                    </select>
+                    <div class="invalid-feedback">Select a role.</div>
+                </div>
+
+                <div class="col-12 mt-2">
+                    <button class="btn btn-success w-100">Add User</button>
+                </div>
+
+            </div>
+        </form>
+
+        <!-- USERS TABLE -->
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Active</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {{#each users}}
+                <tr>
+                    <td>{{this.firstName}} {{this.lastName}}</td>
+                    <td>{{this.username}}</td>
+                    <td>{{this.email}}</td>
+                    <td>{{this.role}}</td>
+                    <td>{{#if this.isActive}}
+                            <span class="badge bg-success">Active</span>
+                        {{else}}
+                            <span class="badge bg-danger">Inactive</span>
+                        {{/if}}
+                    </td>
+
+                    <td>
+                        <button 
+                            type="button"
+                            class="btn btn-secondary btn-sm toggle-status-btn"
+                            data-id="{{this._id}}"
+                            data-active="{{this.isActive}}">
+                            
+                            {{#if this.isActive}}Deactivate{{else}}Activate{{/if}}
+                        </button>
+
+                        <button 
+                            class="btn btn-danger btn-sm delete-user-btn"
+                            data-id="{{this._id}}">
+                            Delete
+                        </button>
+                        </form>
+
+                    </td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+</main>
+
+
+
+<!-- Toast -->
+<div id="toast" class="toast-msg" style="display:none;"></div>
+
+
+<!-- ===== DELETE CONFIRM MODAL ===== -->
+<div class="modal" id="deleteModal">
+    <div class="modal-dialog">
+        <div class="modal-content" style="width:360px;">
+            <span class="close" id="closeDeleteModal">&times;</span>
+            <h3 style="font-size:18px;">Delete User</h3>
+            <p id="deleteConfirmText" class="text-center my-3"></p>
+            <input type="hidden" id="deleteUserId">
+            <div class="d-flex gap-2 justify-content-center">
+                <button class="cancel-btn" id="cancelDeleteBtn">Cancel</button>
+                <button class="delete-confirm-btn" onclick="confirmDelete()">
+                    <i class="fas fa-trash me-1"></i> Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="/src/javascript/users.js"></script>

@@ -54,7 +54,7 @@ $(document).ready(function () {
                 $form.removeClass('was-validated');
                 setTimeout(function() {
                     window.location.reload();
-                }, 3500);
+                }, 1200);
               },
               error: function(xhr) {
                 let msg = 'Error creating tournament';
@@ -66,13 +66,6 @@ $(document).ready(function () {
             });
     });
 
-
-    // DELETE CONFIRMATION
-    $(".delete-tournament-btn").on("click", function (e) {
-        if (!confirm("Are you sure you want to delete this tournament?")) {
-            e.preventDefault();
-        }
-    });
 
 
     // DYNAMIC FORM ACTION
@@ -101,7 +94,7 @@ $(document).ready(function () {
 
         $.ajax({
             url: `/api/tournaments/${id}/update`,
-            method: "POST",
+            method: "PUT",
             contentType: "application/json", // send as JSON
             data: JSON.stringify(formData),
             success: function(res) {
@@ -111,7 +104,7 @@ $(document).ready(function () {
                 $("#editTournamentModal").modal("hide");
                 setTimeout(function() {
                     window.location.reload();
-                }, 3000);
+                }, 1500);
               },
               error: function(xhr) {
                 let msg = 'Error updating tournament';
@@ -125,25 +118,83 @@ $(document).ready(function () {
     });
 
 
-    // FORMAT DATE (IMPORTANT FIX)
+    // FORMAT DATE
     function formatDate(date) {
         if (!date) return "";
         return new Date(date).toISOString().split("T")[0];
     }
 
-    // ----- Toast -----
-    function showToast(message, isError = false) {
-        const $toast = $('#toast'); 
+
+    // DELETE CONFIRMATION
+    $(".delete-tournament-btn").on("click", function () {
+        const id = $(this).data('id');
+
+        openDeleteModal(id);
+    });
+
+    $('#cancelDeleteBtn, #closeDeleteModal').on('click', function() {
+        const modal = bootstrap.Modal.getInstance($('#deleteModal'));
+        modal.hide();
+    });
+
+
+    // ----- DELETE TOURNAMENT -----
+    function openDeleteModal(id) {
+        $('#deleteTournamentId').val(id);
+        $('#deleteConfirmText').text(`Are you sure you want to delete this tournament? This action cannot be undone.`);
         
-        if (!$toast.length) return; 
-    
-        $toast.text(message)
-              .css('background-color', isError ? '#e74c3c' : '#0b5d3b')
-              .show(); 
-    
-        setTimeout(() => { 
-            $toast.hide();
-        }, 3500);
+        const modalElement = $('#deleteModal');
+        const modalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
+
+        modalInstance.show();
     }
 
+    
+
 });
+
+
+async function confirmDelete() {
+    const id = $('#deleteTournamentId').val(); 
+
+    const modalElement = $('#deleteModal');
+    const modalInstance = bootstrap.Modal.getInstance(modalElement);
+
+    try {
+        const data = await $.ajax({
+            url: `/api/tournaments/${id}/delete`,
+            method: 'DELETE',
+        });
+
+        modalInstance.hide();
+
+        if (!data.success) {
+            showToast(data.message || 'Failed to delete tournament.', true);
+            return;
+        }
+
+        showToast('Tournament deleted successfully!');
+        setTimeout(() => location.reload(), 1200);
+
+    } catch (err) {
+        modalInstance.hide();
+        const errorMsg = err.responseJSON?.message || 'Network error. Please try again.';
+        showToast(errorMsg, true);
+    }
+}
+
+
+// ----- Toast -----
+function showToast(message, isError = false) {
+    const $toast = $('#toast'); 
+    
+    if (!$toast.length) return; 
+
+    $toast.text(message)
+          .css('background-color', isError ? '#e74c3c' : '#0b5d3b')
+          .show(); 
+
+    setTimeout(() => { 
+        $toast.hide();
+    }, 3500);
+}

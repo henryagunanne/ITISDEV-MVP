@@ -7,15 +7,8 @@ const { isAuthenticated, authorize } = require('../middleware/auth');
 
 router.use(isAuthenticated);
 
-// Admin Dashboard route
-router.get('/dashboard', (req, res) => {
-    res.render('pages/admin-dashboard', { 
-        title: 'Green Archers Analytics - Dashboard',
-        user: req.session.user
-    });
-});
 
-router.get("/statistics", (req, res) => {
+router.get("/statistics", authorize('Coach', 'Statistician'), (req, res) => {
     res.render("pages/statistics-encoding", {
         title: "Statistics Encoding",
         user: req.session.user
@@ -23,7 +16,7 @@ router.get("/statistics", (req, res) => {
 });
 
 // render live game creation page
-router.get('/start-game', async (req, res) => {
+router.get('/start-game', authorize('Coach', 'Statistician'), async (req, res) => {
     const tournaments = await Tournament.find().sort({ createdAt: -1 }).lean();
 
     res.render("pages/setup", {
@@ -34,7 +27,7 @@ router.get('/start-game', async (req, res) => {
 });
 
 // render live game stat input page
-router.get('/encode-stats',  async (req, res) => {
+router.get('/encode-stats',  authorize('Coach', 'Statistician'), async (req, res) => {
     const gameId = req.query.gameId;
     const game = await Game.findById(gameId).lean();
     if (!game){

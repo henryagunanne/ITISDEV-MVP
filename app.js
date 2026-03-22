@@ -23,9 +23,18 @@ app.engine('hbs', exphbs.engine({
     layoutsDir: 'views/layouts',       // Folder for layout files
     partialsDir: 'views/partials',     // Folder for partial files/reusable components
     helpers: {
-        eq: function (v1, v2) {
-            return v1 === v2;
-        },
+        // --- Logic Helpers ---
+        eq: (a, b) => a === b,
+        ne: (a, b) => a !== b,
+        gt: (a, b) => a > b,
+        gte: (a, b) => a >= b,
+        lt: (a, b) => a < b,
+        lte: (a, b) => a <= b,
+
+        and: (...args) => args.slice(0, -1).every(Boolean),
+        or: (...args) => args.slice(0, -1).some(Boolean),
+        not: (a) => !a,
+
         startsWith: function (str, prefix) {
             return str && str.startsWith(prefix);
         },
@@ -58,25 +67,39 @@ app.use((req, res, next) => {
 // Routes
 app.use('/', require('./routes/index')); // Home and general routes
 app.use('/auth', require('./routes/auth')); // Authentication routes (login, register, logout)
+app.use('/admin', require('./routes/admin')); // Admin routes for managing teams, players, games, etc.
 app.use('/api/users', require('./routes/user')); // User authentication and profile routes
 app.use('/api/players', require('./routes/player')); // Players routes
 app.use('/api/games', require('./routes/game')); // Games routes
-app.use('/admin', require('./routes/admin')); // Admin routes for managing teams, players, games, etc.
 app.use('/api/analytics', require('./routes/analytics')); // Analytics routes
 app.use('/api/gameStats', require('./routes/gameStats')); // Game statistics routes
 app.use('/api/tournaments', require('./routes/tournament')); // Tournament routes
 app.use('/api/gameEvents', require('./routes/gameEvents')); // Game events routes
 
 
-// 404 handler - for unmatched routes
-app.use((err, req, res, next) => {
-    console.error(`ERROR: ${err.message}`, { stack: err.stack });
+// 404 handler - unmatched routes
+app.use((req, res) => {
     res.status(404).render('error/404', {
         title: '404 Not Found',
+        layout: 'error',
         url: req.originalUrl,
         code: 404,
         message: 'Page Not Found',
-        description: `The requested URL "${req.originalUrl}" was not found on this server.`
+        description: `The requested URL "${req.originalUrl}" was not found on this server.`,
+    });
+});
+
+// Error handler (for thrown errors)
+app.use((err, req, res, next) => {
+    console.error(`ERROR: ${err.message}`, { stack: err.stack });
+
+    res.status(500).render('error/500', {
+        title: 'Server Error',
+        code: 500,
+        message: 'Internal Server Error',
+        description: 'Something went wrong on the server. Please try again later.',
+        // only show in development
+        error: process.env.NODE_ENV === 'development' ? err.stack : null
     });
 });
 

@@ -32,25 +32,28 @@
         </li>
 
         <li class="nav-item">
-            <a class="nav-link {{#if (eq activePath '/')}}active{{/if}}" href="/">
+            <a class="nav-link {{#if (eq activePath '/dashboard')}}active{{/if}}" href="/dashboard">
                 <i class="fas fa-tachometer-alt"></i>Dashboard
             </a>
         </li>
-        <li class="nav-item">
-            <a class="nav-link {{#if (startsWith activePath '/players')}}active{{/if}}" href="/players">
-                <i class="fas fa-users"></i>Players
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link {{#if (startsWith activePath '/games')}}active{{/if}}" href="/games">
-                <i class="fas fa-calendar-alt"></i>Games
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link {{#if (startsWith activePath '/gameStats')}}active{{/if}}" href="/gameStats">
-                <i class="fas fa-chart-bar"></i>Statistics
-            </a>
-        </li>
+        {{#if (or (eq user.role 'Coach') (eq user.role 'Statistician'))}}
+            <li class="nav-item">
+                <a class="nav-link {{#if (startsWith activePath '/players')}}active{{/if}}" href="/players">
+                    <i class="fas fa-users"></i>Players
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{#if (startsWith activePath '/games')}}active{{/if}}" href="/games">
+                    <i class="fas fa-calendar-alt"></i>Games
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{#if (startsWith activePath '/gameStats')}}active{{/if}}" href="/gameStats">
+                    <i class="fas fa-chart-bar"></i>Statistics
+                </a>
+            </li>
+        {{/if}}
+        {{#if (eq user.role 'Admin')}}
         <li class="nav-item">
             <a class="nav-link {{#if (startsWith activePath '/tournaments')}}active{{/if}}" href="/tournaments">
                 <i class="fas fa-trophy"></i>Tournaments
@@ -62,11 +65,14 @@
                 <i class="fas fa-user-cog"></i>Users
             </a>
         </li>
+        {{/if}}
+        {{#if (eq user.role 'Coach')}}
         <li class="nav-item">
             <a class="nav-link {{#if (startsWith activePath '/analytics')}}active{{/if}}" href="/analytics">
                 <i class="fas fa-file-alt"></i>Reports
             </a>
         </li>
+        {{/if}}
     </ul>
 </div>
 

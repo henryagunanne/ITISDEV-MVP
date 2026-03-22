@@ -1,0 +1,83 @@
+/* Layout */
+.profile-container {
+    max-width: 1200px;
+}
+
+/* Sidebar */
+.profile-sidebar {
+    background: #fff;
+    border-radius: 14px;
+    padding: 25px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+/* Avatar */
+.profile-avatar {
+    width: 80px;
+    height: 80px;
+    background: #e9ecef;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: auto;
+    font-size: 30px;
+    color: #6c757d;
+}
+
+/* Meta */
+.profile-meta p {
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+/* Main Panel */
+.profile-main {
+    background: #fff;
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+/* Card inside */
+.profile-card {
+    padding: 10px 5px;
+}
+
+/* Labels */
+.profile-card label {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+/* Inputs */
+.profile-card input {
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+/* Buttons */
+.profile-card .btn {
+    border-radius: 8px;
+    padding: 8px 16px;
+}
+
+/* Tabs */
+.nav-tabs .nav-link {
+    border-radius: 8px;
+    font-size: 14px;
+    color: #006F3C;
+}
+
+.nav-tabs .nav-link.active {
+    background: #006F3C;
+    color: #fff;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .profile-sidebar {
+        margin-bottom: 20px;
+    }
+}

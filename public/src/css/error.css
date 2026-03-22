@@ -1,0 +1,22 @@
+.container h1 {
+    font-size: 80px;
+    font-weight: 700;
+}
+
+.container h3, .container h4 {
+    margin-top: 10px;
+}
+
+.container p {
+    font-size: 16px;
+}
+
+.container h1.display-3 {
+    font-size: 90px;
+    font-weight: 700;
+}
+
+.alert pre {
+    font-size: 12px;
+    white-space: pre-wrap;
+}

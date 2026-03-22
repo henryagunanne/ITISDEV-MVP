@@ -5,17 +5,12 @@ const User = require('../models/User');
 exports.registerUser = async (req, res) => {
     try {
       const { firstName, lastName, username, email, password, role } = req.body;
-      const user = new User({ 
-          firstName: firstName, 
-          lastName: lastName, 
-          username: username.toLowerCase(), 
-          email: email.toLowerCase(), 
-          password: password, 
-          role: role
-      });
-  
+
+      const lowerEmail = email.toLowerCase();
+      const lowerUsername = username.toLowerCase();
+      
       // check if email already exists
-      const existingUser = User.findOne({email: email}).lean();
+      const existingUser = await User.findOne({email: email});
       if (existingUser) {
           return res
           .status(400)
@@ -23,12 +18,22 @@ exports.registerUser = async (req, res) => {
       }
   
       // check if username already exists
-      const duplicateUsername = User.findOne({username: username}).lean();
+      const duplicateUsername = await User.findOne({username: username});
       if (duplicateUsername) {
           return res
           .status(400)
           .json({ success: false, message: `Username ${username} already exists`})
       }
+
+      const user = new User({ 
+        firstName: firstName, 
+        lastName: lastName, 
+        username: lowerUsername,
+        email: lowerEmail,
+        password: password, 
+        role: role
+    });
+
   
       await user.save();
   
@@ -46,7 +51,7 @@ exports.registerUser = async (req, res) => {
 // Update user profile
 exports.updateUserProfile = async (req, res) => {
     try {
-      const userId = req.session.user._id; // Get user ID from session
+      const userId = req.session.user.id; // Get user ID from session
       const { firstName, lastName, username, email } = req.body; // Get updated fields from request body
   
       const user = await User.findById(userId);
@@ -72,7 +77,7 @@ exports.updateUserProfile = async (req, res) => {
 // Change user password
 exports.changeUserPassword = async (req, res) => {
     try {
-        const userId = req.session.user._id; // Get user ID from session
+        const userId = req.session.user.id; // Get user ID from session
         const { currentPassword, newPassword } = req.body; // Get current and new password from request body
     
         const user = await User.findById(userId);
@@ -89,7 +94,7 @@ exports.changeUserPassword = async (req, res) => {
 
         // ensure that current password and new passwords are not the same
         if (currentPassword === newPassword) {
-        return res.status(400).json({ success: false, message: 'New password must be different from current password' });
+            return res.status(400).json({ success: false, message: 'New password must be different from current password' });
         }
     
         // Update password
@@ -106,7 +111,7 @@ exports.changeUserPassword = async (req, res) => {
 exports.deleteUserAccount = async (req, res) => {
     // const { userId } = req.params; // Get user ID from request parameters
     try {
-        const userId = req.session.user._id; // Get user ID from session
+        const userId = req.session.user.id; // Get user ID from session
   
         const user = await User.findByIdAndDelete(userId);
     
@@ -159,8 +164,8 @@ exports.getAllUsers = async (req, res) => {
 // Admin - Delete user by ID (for admin dashboard)
 exports.deleteUserById = async (req, res) => {
     try {
-        const { userId } = req.params; // Get user ID from request parameters
-        const deletedUser = await User.findByIdAndDelete(userId).lean();
+        const { id } = req.params; // Get user ID from request parameters
+        const deletedUser = await User.findByIdAndDelete(id).lean();
 
         if (!deletedUser) {
             return res.status(404).json({ success: false, message: 'User not found' });
@@ -183,11 +188,13 @@ exports.deleteUserById = async (req, res) => {
 // Admin - Deactivate user account by changing status
 exports.deactivateUserAccount = async (req, res) => {
     try {
-        const { userId } = req.params; // Get user ID from request parameters
+        const id = req.params.id; // Get user ID from request parameters
+        const { isActive} = req.body;
+
         const updatedUser = await User.findByIdAndUpdate(
-            userId, 
-            { status: 'Inactive' }, 
-            { new: true }
+            id, 
+            { isActive: isActive }, 
+            { returnDocument: 'after' }
         ).select('-password').lean(); // Exclude password field
 
         if (!updatedUser) {
@@ -210,13 +217,15 @@ exports.deactivateUserAccount = async (req, res) => {
 
 
 // Admin - Reactivate user account by changing status
-exports.reactivateUserAccount = async (req, res) => {
+exports.activateUserAccount = async (req, res) => {
     try {
-        const { userId } = req.params; // Get user ID from request parameters
+        const id = req.params.id; // Get user ID from request parameters
+        const { isActive} = req.body;
+
         const updatedUser = await User.findByIdAndUpdate(
-            userId, 
-            { status: 'Active' }, 
-            { new: true }
+            id, 
+            { isActive: isActive }, 
+            { returnDocument: 'after' }
         ).select('-password').lean(); // Exclude password field
 
         if (!updatedUser) {

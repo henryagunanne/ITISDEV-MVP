@@ -27,13 +27,22 @@ exports.loginUser = async (req, res) => {
             });
         }
 
+        // check if user is active
+        if (!user.isActive) {
+            return res.status(401).json({
+                message: "User account deactivated. Please contact Admin"
+            });
+        }
+
         // store user details in session
         req.session.user = {
             id: user._id,
             firstName: user.firstName,
             lastName: user.lastName,
             username: user.username,
-            role: user.role
+            email: user.email,
+            role: user.role,
+            isActive: user.isActive
         };
 
         /*res.render('pages/dashboard', {

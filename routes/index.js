@@ -1,16 +1,29 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const router = express.Router();
+const path = require('path');
 const Player = require('../models/Player');
 const GameStats = require('../models/GameStats');
 const Game = require('../models/Game');
 const Tournament = require('../models/Tournament');
 const User = require('../models/User');
 
-const { isAuthenticated } = require('../middleware/auth');
+const { isAuthenticated, authorize } = require('../middleware/auth')
 
-// Dashboard
-router.get('/', isAuthenticated, async (req, res) => {
+
+// Login page
+router.get('/', (req, res) => {
+  // Check if the user is already logged in
+  if (req.session && req.session.user) {
+    // If they are, redirect them to the dashboard and STOP the function
+    return res.redirect('/dashboard'); 
+  }
+  // render static login page from public folder
+  res.sendFile(path.join(__dirname, '../public/src/html/login.html'));
+});
+
+// Render Dashboard
+router.get('/dashboard', isAuthenticated, async (req, res) => {
   try {
     const tournaments = await Tournament.find().sort({ startDate: -1 }).lean();
     res.render('pages/dashboard', { 
@@ -28,7 +41,7 @@ router.get('/', isAuthenticated, async (req, res) => {
 });
 
 // Statistics Encoding page
-router.get('/statistics-encoding', isAuthenticated, (req, res) => {
+router.get('/statistics-encoding', isAuthenticated, authorize('Coach', 'Statistician'), (req, res) => {
   res.render('pages/statistics-encoding', {
       title: 'Statistics Encoding',
       user: req.session.user
@@ -37,7 +50,7 @@ router.get('/statistics-encoding', isAuthenticated, (req, res) => {
 
 
 // Players list page
-router.get('/players', isAuthenticated, async (req, res) => {
+router.get('/players', isAuthenticated, authorize('Coach', 'Statistician'), async (req, res) => {
   try {
     const players = await Player.find().sort({ jerseyNumber: 1 }).lean();
     const user = req.session.user;
@@ -54,7 +67,7 @@ router.get('/players', isAuthenticated, async (req, res) => {
 });
 
 // Render statistics page
-router.get('/gameStats', isAuthenticated, async (req, res) => {
+router.get('/gameStats', isAuthenticated, authorize('Coach', 'Statistician'), async (req, res) => {
   try {
     const game = await Game.find({ status: 'ENDED' }).sort('-gameDate').lean();
     if (!game) res.status(400);
@@ -69,7 +82,7 @@ router.get('/gameStats', isAuthenticated, async (req, res) => {
 });
 
 // Player profile page
-router.get('/players/:id', isAuthenticated, async (req, res) => {
+router.get('/players/:id', isAuthenticated, authorize('Coach', 'Statistician'), async (req, res) => {
   try {
     const player = await Player.findById(req.params.id).lean();
     if (!player) return res.status(404).send('Player not found');
@@ -109,7 +122,7 @@ router.get('/players/:id', isAuthenticated, async (req, res) => {
 });
 
 // Games list page
-router.get('/games', isAuthenticated, async (req, res) => {
+router.get('/games', isAuthenticated, authorize('Coach', 'Statistician'), async (req, res) => {
   try {
     const games = await Game.find()
       .populate('tournament', 'name league season', {lean: true})
@@ -133,7 +146,7 @@ router.get('/games', isAuthenticated, async (req, res) => {
 
 
 // Render Reports and Analytics Page
-router.get('/analytics', isAuthenticated, async (req, res) => {
+router.get('/analytics', isAuthenticated, authorize('Coach'), async (req, res) => {
   res.render("pages/analytics", {
     title: 'Reports & Analytics'
   });
@@ -141,8 +154,8 @@ router.get('/analytics', isAuthenticated, async (req, res) => {
 
 
 // Render users management page with users
-router.get("/users", isAuthenticated, async (req, res) => {
-    const users = await User.find();
+router.get("/users", isAuthenticated, authorize('Admin'), async (req, res) => {
+    const users = await User.find().lean();
     res.render("pages/users", {
         title: 'User Account Management',
         users
@@ -151,7 +164,7 @@ router.get("/users", isAuthenticated, async (req, res) => {
 
 
 // Render tournaments page with tournament view
-router.get("/tournaments", isAuthenticated, async (req, res) => {
+router.get("/tournaments", isAuthenticated, authorize('Admin'), async (req, res) => {
   const tournaments = await Tournament.find().sort({ createdAt: -1 }).lean();
 
   res.render("pages/tournament", {
@@ -163,21 +176,10 @@ router.get("/tournaments", isAuthenticated, async (req, res) => {
 
 // Render user profile
 router.get('/user-profile', isAuthenticated, async (req, res) => {
-  try {
-    const userId = req.session.user.id; // Get user ID from session
-    const user = await User.findById(userId).select('-password').lean(); // Exclude password field
-
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
 
     res.status(200).render('pages/user-profile', {
-      title: `${user.username} profile`,
-      user
+        title: `${req.session.user.username} profile`
     });
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching user profile', error: error.message });
-  }
 });
 
 module.exports = router;

@@ -23,7 +23,7 @@ $(function () {
             success: function (res) {
                 if (res.message === 'Login successful') {
                     // Redirect to dashboard or home page after successful login
-                    window.location.href = '/';
+                    window.location.href = '/dashboard';
                 } else {
                     $('#loginAlert').text(res.message).removeClass('d-none');
                 }
@@ -43,7 +43,7 @@ $(function () {
             method: 'POST',
             success: function () {
                 // Redirect to login page after logout
-                window.location.href = '/auth/login';
+                window.location.href = '/';
             },
             error: function () {
                 alert("Logout failed. Please try again.");

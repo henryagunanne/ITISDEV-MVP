@@ -8,7 +8,7 @@ router.use(isAuthenticated);    // All routes in this router require authenticat
 // router.use(authorize('Admin')); // Only Admins can access these routes
 
 // Create a new user
-router.post('/register', authorize('Admin'), userController.registerUser);
+router.post('/create', authorize('Admin'), userController.registerUser);
 
 // Update user profile
 router.put('/update-profile', userController.updateUserProfile);
@@ -17,7 +17,7 @@ router.put('/update-profile', userController.updateUserProfile);
 router.put('/change-password', userController.changeUserPassword);
 
 // Delete user account
-router.delete('/delete-account', userController.deleteUserAccount);
+router.delete('/delete-account',  authorize('Admin'), userController.deleteUserAccount);
 
 // Get user by ID (Admin only)
 router.get('/:id', authorize('Admin'), userController.getUserById);
@@ -31,8 +31,8 @@ router.delete('/:id/delete', authorize('Admin'), userController.deleteUserById);
 // Deactive user account (Admin only)
 router.put('/:id/deactivate', authorize('Admin'), userController.deactivateUserAccount);
 
-// Reactivate user account (Admin only)
-router.put('/:id/reactivate', authorize('Admin'), userController.reactivateUserAccount);
+// activate user account (Admin only)
+router.put('/:id/activate', authorize('Admin'), userController.activateUserAccount);
 
 
 // Export the router to be used in app.js
