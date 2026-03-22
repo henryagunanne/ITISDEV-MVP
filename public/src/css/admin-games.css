@@ -279,8 +279,8 @@ td { padding: 16px; border-bottom: 1px solid #eee; font-size: 14px; vertical-ali
 
 /* Edit / Delete action buttons */
 .edit-btn {
-    background: #f1c40f;
-    color: #222;
+    background: #0b5d3b;
+    color: white;
     border: none;
     padding: 6px 14px;
     border-radius: 4px;
@@ -293,7 +293,7 @@ td { padding: 16px; border-bottom: 1px solid #eee; font-size: 14px; vertical-ali
     gap: 4px;
 }
 .edit-btn:hover, .edit-btn:focus {
-    background: #d4ac0d;
+    background: #084b2f;
 }
 
 .delete-btn {
