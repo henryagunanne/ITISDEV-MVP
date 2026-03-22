@@ -64,7 +64,7 @@ app.use('/api/games', require('./routes/game')); // Games routes
 app.use('/admin', require('./routes/admin')); // Admin routes for managing teams, players, games, etc.
 app.use('/api/analytics', require('./routes/analytics')); // Analytics routes
 app.use('/api/gameStats', require('./routes/gameStats')); // Game statistics routes
-app.use('/api/tournament', require('./routes/tournament')); // Tournament routes
+app.use('/api/tournaments', require('./routes/tournament')); // Tournament routes
 app.use('/api/gameEvents', require('./routes/gameEvents')); // Game events routes
 
 

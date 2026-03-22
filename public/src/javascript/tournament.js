@@ -29,24 +29,43 @@ $(document).ready(function () {
     });
 
     // Create Tournament form submission handling
-    $('#createTournament').on('submit', function(e) {
+    $('#createTournamentForm').on('submit', function(e) {
         e.preventDefault();
+        const $form = $(this);
 
-        action="/api/tournaments/create"
-
-        // validate form inputs
-        if (!this.checkValidity()) {
+        // Check form validity
+        if (this.checkValidity() === false) {
             e.stopPropagation();
-            this.classList.add('was-validated');
+            $form.addClass('was-validated');
             return;
         }
   
+        const formData = new FormData(this);
+        const plainObject = Object.fromEntries(formData.entries());
+
         $.ajax({
-            url: "/reservations/create",
+            url: "/api/tournaments/create",
             method: "POST",
             contentType: "application/json", // send as JSON
-            data: JSON.stringify({})
+            data: JSON.stringify(plainObject),
+            success: function(res) {
+                showToast(res.message || 'Tournament created successfully', false);
+                $form[0].reset();
+                $form.removeClass('was-validated');
+                setTimeout(function() {
+                    window.location.reload();
+                }, 3500);
+              },
+              error: function(xhr) {
+                let msg = 'Error creating tournament';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                  msg = xhr.responseJSON.message;
+                }
+                showToast(msg, true);
+              }
+            });
     });
+
 
     // DELETE CONFIRMATION
     $(".delete-tournament-btn").on("click", function (e) {
@@ -55,11 +74,56 @@ $(document).ready(function () {
         }
     });
 
+
     // DYNAMIC FORM ACTION
-    $("#editTournamentForm").on("submit", function () {
+    $("#editTournamentForm").on("submit", function (e) {
+        e.preventDefault();
+        const $form = $(this);
         const id = $("#editId").val();
-        $(this).attr("action", `/api/tournaments/${id}/update`);
+
+        // Check form validity
+        if (this.checkValidity() === false) {
+            e.stopPropagation();
+            $form.addClass('was-validated');
+            return;
+        }
+  
+        const formData = {
+            name: $('#editName').val(),
+            league: $('#editLeague').val(),
+            season: $('#editSeason').val(),
+            description: $('#editDescription').val(),
+            startDate: $('#editStartDate').val(),
+            endDate: $('#editEndDate').val()
+        }
+
+        console.log(formData)
+
+        $.ajax({
+            url: `/api/tournaments/${id}/update`,
+            method: "POST",
+            contentType: "application/json", // send as JSON
+            data: JSON.stringify(formData),
+            success: function(res) {
+                showToast(res.message || 'Tournament updated successfully', false);
+                $form[0].reset();
+                $form.removeClass('was-validated');
+                $("#editTournamentModal").modal("hide");
+                setTimeout(function() {
+                    window.location.reload();
+                }, 3000);
+              },
+              error: function(xhr) {
+                let msg = 'Error updating tournament';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                  msg = xhr.responseJSON.message;
+                }
+                $("#editTournamentModal").modal("hide");
+                showToast(msg, true);
+              }
+        });
     });
+
 
     // FORMAT DATE (IMPORTANT FIX)
     function formatDate(date) {
@@ -67,16 +131,19 @@ $(document).ready(function () {
         return new Date(date).toISOString().split("T")[0];
     }
 
+    // ----- Toast -----
+    function showToast(message, isError = false) {
+        const $toast = $('#toast'); 
+        
+        if (!$toast.length) return; 
+    
+        $toast.text(message)
+              .css('background-color', isError ? '#e74c3c' : '#0b5d3b')
+              .show(); 
+    
+        setTimeout(() => { 
+            $toast.hide();
+        }, 3500);
+    }
 
 });
-
-
-// ----- Toast -----
-function showToast(message, isError = false) {
-    const toast = document.getElementById('toast');
-    if (!toast) return;
-    toast.textContent = message;
-    toast.style.background = isError ? '#e74c3c' : '#0b5d3b';
-    toast.style.display = 'block';
-    setTimeout(() => { toast.style.display = 'none'; }, 3500);
-}

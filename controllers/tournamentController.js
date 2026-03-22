@@ -41,10 +41,10 @@ exports.createTournament = async (req, res) => {
             name,
             league,
             season,
-            description,
+            description: description ? description : '',
             startDate,
-            endDate,
-            createdBy: req.session.user._id
+            endDate: endDate ? endDate : '',
+            createdBy: req.session.user.id
         });
         await newTournament.save();
         res.status(201).json({
@@ -64,7 +64,14 @@ exports.updateTournament = async (req, res) => {
         const { name, league, season, description, startDate, endDate } = req.body;
         const updatedTournament = await Tournament.findByIdAndUpdate(
             tournamentId,
-            { name, league, season, description, startDate, endDate },
+            { 
+                name, 
+                league, 
+                season, 
+                description: description ? description : '', 
+                startDate, 
+                endDate: endDate ? endDate :''
+            },
             { new: true }
         );
         if (!updatedTournament) {

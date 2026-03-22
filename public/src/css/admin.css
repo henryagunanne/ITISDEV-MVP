@@ -80,3 +80,20 @@ form textarea {
     background: #f9f9f9;
     cursor: pointer;
 }
+
+/* Toast notification */
+.toast-msg {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    color: white;
+    padding: 14px 22px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    z-index: 9999;
+    max-width: calc(100vw - 60px);
+    word-wrap: break-word;
+    animation: fadeInUp 0.3s ease;
+}

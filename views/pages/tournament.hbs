@@ -30,10 +30,12 @@
 
                 <div class="col">
                     <input type="text" name="startDate" id="startDate" class="form-control" placeholder="Start Date" required>
+                    <div class="invalid-feedback">Start Date is required.</div>
                 </div>
 
                 <div class="col">
                     <input type="text" name="endDate" id="endDate" placeholder="End Date" class="form-control">
+                    <div id="dateHelp" class="form-text">Can be omitted.</div>
                 </div>
 
                 <div class="col-12 mt-2">
@@ -81,7 +83,7 @@
                             Edit
                         </button>
 
-                        <form action="/tournaments/delete/{{this._id}}" method="POST" class="d-inline">
+                        <form action="/api/tournaments/{{this._id}}/delete" method="DELETE" class="d-inline">
                             <button class="btn btn-danger btn-sm delete-tournament-btn">Delete</button>
                         </form>
                     </td>
@@ -92,9 +94,11 @@
     </div>
 </main>
 
+
+<!-- Edit Tournament Modal -->
 <div class="modal fade" id="editTournamentModal">
     <div class="modal-dialog">
-        <form method="POST" id="editTournamentForm">
+        <form method="POST" id="editTournamentForm" novalidate>
             <div class="modal-content">
                 <div class="modal-header">
                     <h5>Edit Tournament</h5>
@@ -103,30 +107,50 @@
                 <div class="modal-body">
                     <input type="hidden" id="editId">
 
-                    <input id="editName" name="name" class="form-control mb-2" required>
+                    <div>
+                        <input id="editName" name="name" class="form-control mb-2" required>
+                        <div class="invalid-feedback">Tournament Name is Required.</div>
+                    </div>
+
+                    <div>
+                        <select id="editLeague" name="league" class="form-control mb-2">
+                            <option>UAAP</option>
+                            <option>NCAA</option>
+                            <option>Preseason</option>
+                            <option>Tune-Up</option>
+                        </select>
+                        <div class="invalid-feedback">Please select a League.</div>
+                    </div>
                     
-                    <select id="editLeague" name="league" class="form-control mb-2">
-                        <option>UAAP</option>
-                        <option>NCAA</option>
-                        <option>Preseason</option>
-                        <option>Tune-Up</option>
-                    </select>
+                    <div>
+                        <input id="editSeason" name="season" class="form-control mb-2">
+                        <div class="invalid-feedback">Season is Required.</div>
+                    </div>
 
-                    <input id="editSeason" name="season" class="form-control mb-2">
+                    <div>
+                        <textarea id="editDescription" name="description" class="form-control mb-2"></textarea>
+                    </div>
 
-                    <textarea id="editDescription" name="description" class="form-control mb-2"></textarea>
-
-                    <input type="date" id="editStartDate" name="startDate" class="form-control mb-2">
-                    <input type="date" id="editEndDate" name="endDate" class="form-control">
+                    <div>
+                        <input type="date" id="editStartDate" name="startDate" class="form-control mb-2">
+                        <div class="invalid-feedback">Start Date is Required.</div>
+                    </div>
+                    <div>
+                        <input type="date" id="editEndDate" name="endDate" class="form-control">
+                    </div>
                 </div>
 
                 <div class="modal-footer">
-                    <button class="btn btn-primary">Save</button>
+                    <button class="btn btn-success">Save</button>
                 </div>
             </div>
         </form>
     </div>
 </div>
+
+
+<!-- Toast -->
+<div id="toast" class="toast-msg" style="display:none;"></div>
 
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="/src/javascript/tournament.js"></script>

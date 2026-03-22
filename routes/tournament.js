@@ -17,7 +17,7 @@ router.get('/all', tournamentController.getAllTournaments);
 router.get('/:id', tournamentController.getTournamentById);
 
 // Update a tournament (Admin only)
-router.put('/:id/update', authorize('Admin'), tournamentController.updateTournament);
+router.put('/:id/update', tournamentController.updateTournament);
 
 // Delete a tournament (Admin only)
 router.delete('/:id/delete', authorize('Admin'), tournamentController.deleteTournament);

@@ -249,7 +249,7 @@
                     <select id="editTournament" required>
                         <option value=""></option>
                         {{#each tournaments}}
-                        <option value="{{this._id}}">{{this.name}} ({{this.league}} · S{{this.season}})</option>
+                        <option value="{{this._id}}">{{this.name}} ({{this.league}} · {{this.season}})</option>
                         {{/each}}
                     </select>
                     <label>Select Tournament</label>
