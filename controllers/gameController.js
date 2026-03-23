@@ -130,7 +130,7 @@ exports.createGame = async (req, res) => {
             startTime: startTime || new Date(),
             teamScore: teamScore || 0,
             opponentScore: opponentScore || 0,
-            status: status || 'Scheduled',
+            status: status || 'NOT_STARTED',
             currentPeriod: currentPeriod || 1,
             gameClock: gameClock || '10:00',
             quarterScores: quarterScores || {
