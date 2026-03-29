@@ -1,3 +1,6 @@
+/* Handles the interactivity logic of the live game statistics input module
+*/ 
+
 const API = '';
 let gameId = null;
 let homePlayers = [];

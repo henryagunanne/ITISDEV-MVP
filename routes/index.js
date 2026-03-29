@@ -147,8 +147,11 @@ router.get('/games', isAuthenticated, authorize('Coach', 'Statistician'), async 
 
 // Render Reports and Analytics Page
 router.get('/analytics', isAuthenticated, authorize('Coach'), async (req, res) => {
+  const tournaments = await Tournament.find().sort({ startDate: -1 }).lean();
+
   res.render("pages/analytics", {
-    title: 'Reports & Analytics'
+    title: 'Reports & Analytics',
+    tournaments
   });
 });
 

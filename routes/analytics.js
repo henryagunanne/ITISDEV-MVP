@@ -18,6 +18,9 @@ router.get("/summary", authorize('Coach'), analyticsController.reportSummary);
 // GET /api/analytics/players - Returns the computed player report summary for the reports page
 router.get('/players', authorize('Coach'), analyticsController.reportPlayerSummary);
 
+// GET /api/analytics/insights - dynamically retrieve and interprete game data using an AI model to generate contextual insights and recommendations for coaches.
+router.get('/insights', authorize('Coach'), analyticsController.getAIInsights);
+
 
 // Returns Game summaries
 router.get('/game-summary/:id', authorize('Coach'), analyticsController.getGameSummaries);

@@ -16,6 +16,9 @@
             <div class="col-md-3">
                 <select id="seasonFilter" class="form-select">
                     <option value="">All Seasons</option>
+                    {{#each tournaments}}
+                    <option value="{{this.name}}">{{this.name}}</option>
+                    {{/each}}
                 </select>
             </div>
 
@@ -24,11 +27,11 @@
             </div>
 
             <div class="col-md-3">
-                <input type="date" id="startDate" class="form-control" placeholder="Start Date">
+                <input type="text" id="startDate" class="form-control" placeholder="Start Date">
             </div>
 
             <div class="col-md-3">
-                <input type="date" id="endDate" class="form-control" placeholder="End Date">
+                <input type="text" id="endDate" class="form-control" placeholder="End Date">
             </div>
         </div>
 
@@ -79,8 +82,19 @@
                 </div>
             </div>
         </div>
-
+        <br><br>
         <!-- Player Table -->
+        <div class="row mb-3 d-flex justify-content-end">
+            <div class="col-md-3">
+                <select id="sortBy" class="form-select float-end">
+                    <option value="ppg">Sort by PPG</option>
+                    <option value="rpg">Sort by RPG</option>
+                    <option value="apg">Sort by APG</option>
+                    <option value="efficiency">Sort by EFF</option>
+                    <option value="tsPercentage">Sort by TS%</option>
+                </select>
+            </div>
+        </div>
         <div class="card p-3">
             <h5>Player Performance</h5>
             <table class="table table-hover">
@@ -99,6 +113,12 @@
             </table>
         </div>
 
+        <div class="card mt-4">
+            <div class="card-header">AI Insights</div>
+            <div class="card-body" id="aiInsights">
+                Loading insights...
+            </div>
+        </div>
     </div>
 </main>
 

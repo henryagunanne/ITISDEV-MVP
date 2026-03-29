@@ -1,3 +1,7 @@
+/* 
+    Handles the interactiviy, logic and frontend requests of the statistics viewing page
+*/
+
 const API = '';
 
 let selectedGameId = null;
