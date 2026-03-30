@@ -447,8 +447,7 @@ exports.generateInsights = async (req, res) => {
 
         let winProb = 50;
 
-        const scoreDiff = team.pts - opp.pts;
-
+        // simple heuristic
         winProb += (wins / gamesCount) * 20; 
 
         // clamp
@@ -488,7 +487,7 @@ exports.generateInsights = async (req, res) => {
             - Average score: La Salle ${avgTeamScore} - Opponent ${avgOppScore}
         `;
 
-        
+
         const fullContext = `
             ${context}
 
