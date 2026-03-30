@@ -2,6 +2,11 @@ const mongoose = require('mongoose');
 const Game = require('../models/Game');
 const GameStats = require('../models/GameStats');
 const Player = require("../models/Player");
+const OpenAI = require("openai");
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
 
 
 // This endpoint generates a full box score for a specific game, including player stats.
@@ -1098,12 +1103,9 @@ exports.getPerformanceByHalfForAllPlayers = async (req, res) => {
 
 
 
-
-// Get reports summary for reports page
-exports.reportSummary = async (req, res) => {
-    try{
-
-        const { season, opponent, startDate, endDate } = req.query;
+// Helper for total summaries for reports page
+async function computeReportSummary(filters) {
+    const { season, opponent, startDate, endDate } = filters;
 
         let gameFilter = {};
 
@@ -1168,7 +1170,7 @@ exports.reportSummary = async (req, res) => {
             result: g.teamScore > g.opponentScore ? "W" : "L"
         }));
 
-        res.json({
+        return {
             totalGames,
             wins,
             losses,
@@ -1176,7 +1178,254 @@ exports.reportSummary = async (req, res) => {
             avgPoints,
             efficiency,
             games: gameTrend   // USED IN CHARTS DISPLAY
-        });
+        };
+}
+
+// Helper function for player summaries
+async function getPlayerSummaryData(filters = {}) {
+    const { season, opponent, startDate, endDate } = filters;
+
+    // =========================
+    // BUILD MATCH FILTER
+    // =========================
+    let matchStage = {
+        playerId: { $ne: null }
+    };
+
+    // HANDLE TOURNAMENT (season dropdown)
+    if (season) {
+        const Tournament = require('../models/Tournament');
+        const t = await Tournament.findOne({ name: season });
+        if (t) {
+            matchStage["game.tournament"] = t._id;
+        }
+    }
+
+    // OPPONENT FILTER
+    if (opponent) {
+        matchStage["game.opponent"] = { $regex: opponent, $options: "i" };
+    }
+
+    // DATE RANGE FILTER
+    if (startDate || endDate) {
+        matchStage["game.gameDate"] = {};
+        if (startDate) matchStage["game.gameDate"].$gte = new Date(startDate);
+        if (endDate) matchStage["game.gameDate"].$lte = new Date(endDate);
+    }
+
+    // SORT BY BEST PLAYERS (DEFAULT: PPG)
+    const sortBy = filters.sortBy || "ppg";
+
+    let sortStage = {};
+
+    // 🔥 VALIDATE FIELD (prevents errors)
+    const validFields = ["ppg", "rpg", "apg", "efficiency", "tsPercentage"];
+
+    if (validFields.includes(sortBy)) {
+        sortStage[sortBy] = -1;
+    } else {
+        sortStage["ppg"] = -1;
+    }
+
+
+    // =========================
+    // AGGREGATION PIPELINE
+    // =========================
+    const players = await GameStats.aggregate([
+
+        // JOIN GAME DATA (for filters)
+        {
+            $lookup: {
+                from: "games",
+                localField: "gameId",
+                foreignField: "_id",
+                as: "game"
+            }
+        },
+        { $unwind: "$game" },
+
+        // APPLY FILTERS
+        { $match: matchStage },
+
+        // =========================
+        // GROUP PLAYER STATS
+        // =========================
+        {
+            $group: {
+                _id: "$playerId",
+
+                gamesPlayed: { $sum: 1 },
+
+                // BASIC
+                totalPoints: { $sum: "$totals.points" },
+                totalRebounds: {
+                    $sum: {
+                        $add: [
+                            "$totals.offensiveRebounds",
+                            "$totals.defensiveRebounds"
+                        ]
+                    }
+                },
+                totalAssists: { $sum: "$totals.assists" },
+
+                totalFGA: { $sum: "$totals.fieldGoalsAttempted" },
+                totalFTA: { $sum: "$totals.freeThrowsAttempted" },
+                totalTurnovers: { $sum: "$totals.turnovers" },
+
+                totalSteals: { $sum: { $ifNull: ["$totals.steals", 0] } },
+                totalBlocks: { $sum: { $ifNull: ["$totals.blocks", 0] } }
+            }
+        },
+
+        // =========================
+        // COMPUTE ADVANCED METRICS
+        // =========================
+        {
+            $project: {
+                _id: 0,
+                playerId: "$_id",
+
+                // PER GAME STATS
+                ppg: {
+                    $cond: [
+                        { $eq: ["$gamesPlayed", 0] },
+                        0,
+                        { $divide: ["$totalPoints", "$gamesPlayed"] }
+                    ]
+                },
+
+                rpg: {
+                    $cond: [
+                        { $eq: ["$gamesPlayed", 0] },
+                        0,
+                        { $divide: ["$totalRebounds", "$gamesPlayed"] }
+                    ]
+                },
+
+                apg: {
+                    $cond: [
+                        { $eq: ["$gamesPlayed", 0] },
+                        0,
+                        { $divide: ["$totalAssists", "$gamesPlayed"] }
+                    ]
+                },
+
+                // TRUE SHOOTING %
+                tsPercentage: {
+                    $cond: [
+                        {
+                            $gt: [
+                                {
+                                    $add: [
+                                        "$totalFGA",
+                                        "$totalFTA"
+                                    ]
+                                },
+                                0
+                            ]
+                        },
+                        {
+                            $divide: [
+                                "$totalPoints",
+                                {
+                                    $multiply: [
+                                        2,
+                                        {
+                                            $add: [
+                                                "$totalFGA",
+                                                { $multiply: [0.44, "$totalFTA"] }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        0
+                    ]
+                },
+
+                // EFFICIENCY
+                efficiency: {
+                    $subtract: [
+                        {
+                            $add: [
+                                "$totalPoints",
+                                "$totalRebounds",
+                                "$totalAssists",
+                                "$totalSteals",
+                                "$totalBlocks"
+                            ]
+                        },
+                        {
+                            $add: [
+                                "$totalTurnovers",
+                                "$totalFGA" // missed shots proxy
+                            ]
+                        }
+                    ]
+                },
+
+                // USAGE (SIMPLIFIED)
+                usageRate: {
+                    $add: [
+                        "$totalFGA",
+                        "$totalFTA",
+                        "$totalTurnovers"
+                    ]
+                }
+            }
+        },
+
+        // =========================
+        // JOIN PLAYER INFO
+        // =========================
+        {
+            $lookup: {
+                from: "players",
+                localField: "playerId",
+                foreignField: "_id",
+                as: "player"
+            }
+        },
+        { $unwind: "$player" },
+
+        // =========================
+        // FINAL OUTPUT
+        // =========================
+        {
+            $project: {
+                name: {
+                    $concat: [
+                        { $ifNull: ["$player.firstName", ""] },
+                        " ",
+                        { $ifNull: ["$player.lastName", ""] }
+                    ]
+                },
+
+                ppg: { $round: ["$ppg", 1] },
+                rpg: { $round: ["$rpg", 1] },
+                apg: { $round: ["$apg", 1] },
+
+                tsPercentage: { $round: [{ $multiply: ["$tsPercentage", 100] }, 1] },
+                efficiency: { $round: ["$efficiency", 1] },
+                usageRate: { $round: ["$usageRate", 1] }
+            }
+        },
+
+        { $sort: sortStage }
+
+    ]);
+
+    return players;
+}
+
+
+// Get reports summary for reports page
+exports.reportSummary = async (req, res) => {
+    try{
+        const data = await computeReportSummary(req.query);
+        res.json(data);
+        
     } catch (err) {
         res.status(500).message("Error fetching summary");
         console.error("Error:", err.message);
@@ -1188,241 +1437,8 @@ exports.reportSummary = async (req, res) => {
 // player reports summary for the reports and analytics page
 exports.reportPlayerSummary = async (req, res) => {
     try {
-        const { season, opponent, startDate, endDate } = req.query;
-
-        // =========================
-        // BUILD MATCH FILTER
-        // =========================
-        let matchStage = {
-            playerId: { $ne: null }
-        };
-
-        // HANDLE TOURNAMENT (season dropdown)
-        if (season) {
-            const Tournament = require('../models/Tournament');
-            const t = await Tournament.findOne({ name: season });
-            if (t) {
-                matchStage["game.tournament"] = t._id;
-            }
-        }
-
-        // OPPONENT FILTER
-        if (opponent) {
-            matchStage["game.opponent"] = { $regex: opponent, $options: "i" };
-        }
-
-        // DATE RANGE FILTER
-        if (startDate || endDate) {
-            matchStage["game.gameDate"] = {};
-            if (startDate) matchStage["game.gameDate"].$gte = new Date(startDate);
-            if (endDate) matchStage["game.gameDate"].$lte = new Date(endDate);
-        }
-
-        // SORT BY BEST PLAYERS (DEFAULT: PPG)
-        const sortBy = req.query.sortBy || "ppg";
-
-        let sortStage = {};
-
-        // 🔥 VALIDATE FIELD (prevents errors)
-        const validFields = ["ppg", "rpg", "apg", "efficiency", "tsPercentage"];
-
-        if (validFields.includes(sortBy)) {
-            sortStage[sortBy] = -1;
-        } else {
-            sortStage["ppg"] = -1;
-        }
-
-
-        // =========================
-        // AGGREGATION PIPELINE
-        // =========================
-        const players = await GameStats.aggregate([
-
-            // JOIN GAME DATA (for filters)
-            {
-                $lookup: {
-                    from: "games",
-                    localField: "gameId",
-                    foreignField: "_id",
-                    as: "game"
-                }
-            },
-            { $unwind: "$game" },
-
-            // APPLY FILTERS
-            { $match: matchStage },
-
-            // =========================
-            // GROUP PLAYER STATS
-            // =========================
-            {
-                $group: {
-                    _id: "$playerId",
-
-                    gamesPlayed: { $sum: 1 },
-
-                    // BASIC
-                    totalPoints: { $sum: "$totals.points" },
-                    totalRebounds: {
-                        $sum: {
-                            $add: [
-                                "$totals.offensiveRebounds",
-                                "$totals.defensiveRebounds"
-                            ]
-                        }
-                    },
-                    totalAssists: { $sum: "$totals.assists" },
-
-                    totalFGA: { $sum: "$totals.fieldGoalsAttempted" },
-                    totalFTA: { $sum: "$totals.freeThrowsAttempted" },
-                    totalTurnovers: { $sum: "$totals.turnovers" },
-
-                    totalSteals: { $sum: { $ifNull: ["$totals.steals", 0] } },
-                    totalBlocks: { $sum: { $ifNull: ["$totals.blocks", 0] } }
-                }
-            },
-
-            // =========================
-            // COMPUTE ADVANCED METRICS
-            // =========================
-            {
-                $project: {
-                    _id: 0,
-                    playerId: "$_id",
-
-                    // PER GAME STATS
-                    ppg: {
-                        $cond: [
-                            { $eq: ["$gamesPlayed", 0] },
-                            0,
-                            { $divide: ["$totalPoints", "$gamesPlayed"] }
-                        ]
-                    },
-
-                    rpg: {
-                        $cond: [
-                            { $eq: ["$gamesPlayed", 0] },
-                            0,
-                            { $divide: ["$totalRebounds", "$gamesPlayed"] }
-                        ]
-                    },
-
-                    apg: {
-                        $cond: [
-                            { $eq: ["$gamesPlayed", 0] },
-                            0,
-                            { $divide: ["$totalAssists", "$gamesPlayed"] }
-                        ]
-                    },
-
-                    // TRUE SHOOTING %
-                    tsPercentage: {
-                        $cond: [
-                            {
-                                $gt: [
-                                    {
-                                        $add: [
-                                            "$totalFGA",
-                                            "$totalFTA"
-                                        ]
-                                    },
-                                    0
-                                ]
-                            },
-                            {
-                                $divide: [
-                                    "$totalPoints",
-                                    {
-                                        $multiply: [
-                                            2,
-                                            {
-                                                $add: [
-                                                    "$totalFGA",
-                                                    { $multiply: [0.44, "$totalFTA"] }
-                                                ]
-                                            }
-                                        ]
-                                    }
-                                ]
-                            },
-                            0
-                        ]
-                    },
-
-                    // EFFICIENCY
-                    efficiency: {
-                        $subtract: [
-                            {
-                                $add: [
-                                    "$totalPoints",
-                                    "$totalRebounds",
-                                    "$totalAssists",
-                                    "$totalSteals",
-                                    "$totalBlocks"
-                                ]
-                            },
-                            {
-                                $add: [
-                                    "$totalTurnovers",
-                                    "$totalFGA" // missed shots proxy
-                                ]
-                            }
-                        ]
-                    },
-
-                    // USAGE (SIMPLIFIED)
-                    usageRate: {
-                        $add: [
-                            "$totalFGA",
-                            "$totalFTA",
-                            "$totalTurnovers"
-                        ]
-                    }
-                }
-            },
-
-            // =========================
-            // JOIN PLAYER INFO
-            // =========================
-            {
-                $lookup: {
-                    from: "players",
-                    localField: "playerId",
-                    foreignField: "_id",
-                    as: "player"
-                }
-            },
-            { $unwind: "$player" },
-
-            // =========================
-            // FINAL OUTPUT
-            // =========================
-            {
-                $project: {
-                    name: {
-                        $concat: [
-                            { $ifNull: ["$player.firstName", ""] },
-                            " ",
-                            { $ifNull: ["$player.lastName", ""] }
-                        ]
-                    },
-
-                    ppg: { $round: ["$ppg", 1] },
-                    rpg: { $round: ["$rpg", 1] },
-                    apg: { $round: ["$apg", 1] },
-
-                    tsPercentage: { $round: [{ $multiply: ["$tsPercentage", 100] }, 1] },
-                    efficiency: { $round: ["$efficiency", 1] },
-                    usageRate: { $round: ["$usageRate", 1] }
-                }
-            },
-
-            { $sort: sortStage }
-
-        ]);
-
+        const players = await getPlayerSummaryData(req.query);
         res.json(players);
-
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Error fetching player summary" });
@@ -1444,43 +1460,74 @@ exports.getGameSummaries = async (req, res) => {
 };
 
 
+// fallback funtion to generate insights if AI fails
+function generateFallbackInsights(summary, players) {
+    let insights = [];
+
+    if (summary.winRate < 50) {
+        insights.push("Team is underperforming. Focus on defense and shot selection.");
+    } else {
+        insights.push("Team is performing well with a solid win rate.");
+    }
+
+    const topPlayer = players[0];
+    if (topPlayer) {
+        insights.push(`${topPlayer.name} is leading with ${topPlayer.ppg} PPG.`);
+    }
+
+    const inefficient = players.find(p => p.tsPercentage < 50);
+    if (inefficient) {
+        insights.push(`${inefficient.name} has low shooting efficiency.`);
+    }
+
+    return insights.join(" ");
+}
+
+// Generate AI insights with OpenAI
 exports.getAIInsights = async (req, res) => {
     try {
-      const { season } = req.query;
-  
-      // 1. RETRIEVE DATA
-      const summary = await reportSummary(season); 
-      const players = await reportPlayerSummary(); 
-  
-      // 2. BUILD CONTEXT
-      const context = `
-      Team Performance:
-      - Games: ${summary.totalGames}
-      - Win Rate: ${summary.winRate.toFixed(1)}%
-      - Avg Points: ${summary.avgPoints.toFixed(1)}
-  
-      Top Players:
-      ${players.slice(0,5).map(p =>
-        `${p.name}: ${p.ppg} PPG, ${p.rpg} RPG, TS% ${p.tsPercentage}`
-      ).join("\n")}
-      `;
-  
-      // 3. GENERATE INSIGHT
-      const aiResponse = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: "You are a basketball analyst." },
-          { role: "user", content: `Give insights and recommendations:\n${context}` }
-        ]
-      });
-  
-      res.json({
-        insights: aiResponse.choices[0].message.content
-      });
+        const { season } = req.query;
+    
+        // 1. RETRIEVE DATA
+        const summary = await computeReportSummary({ season });
+        const players = await getPlayerSummaryData({ season });
+    
+        // 2. BUILD CONTEXT
+        const context = `
+        Team Performance:
+        - Games: ${summary.totalGames}
+        - Win Rate: ${summary.winRate.toFixed(1)}%
+        - Avg Points: ${summary.avgPoints.toFixed(1)}
+    
+        Top Players:
+        ${players.slice(0,5).map(p =>
+            `${p.name}: ${p.ppg} PPG, ${p.rpg} RPG, TS% ${p.tsPercentage}`
+        ).join("\n")}
+        `;
+    
+        // 3. GENERATE INSIGHT
+        let insights = "";
+        try {
+            const aiResponse = await openai.chat.completions.create({
+                model: "gpt-4o-mini",
+                messages: [
+                { role: "system", content: "You are a basketball analyst." },
+                { role: "user", content: `Give insights and recommendations:\n${context}` }
+                ]
+            });
+
+            insights = aiResponse.choices[0].message.content;
+        } catch (aiError) {
+            console.error("AI failed:", aiError.message);
+
+            insights = generateFallbackInsights(summary, players);
+        }
+
+        res.json({ insights });
   
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: "Failed to generate insights" });
+        console.error(err);
+        res.status(500).json({ error: "Failed to generate insights" });
     }
 };
 

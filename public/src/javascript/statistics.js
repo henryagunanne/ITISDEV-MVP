@@ -14,28 +14,34 @@ $(document).ready(function () {
 
     $('#game-select').change(function () {
         selectedGameId = $(this).val();
-        stat = $(this).data('status');
-        console.log(stat);
+        stat = $(this).find(':selected').data('status');
         if (selectedGameId) {
             loadStats(selectedGameId);
+            loadInsights(selectedGameId);
         }
     });
 
     $('#manual-input-btn').click(function () {
         if (!selectedGameId) {
             alert('Please select a game first');
-            if (stat === "ENDED"){
-                alert('This game is already ended');
-            }
             return;
         }
+
+        if (stat === "ENDED"){
+            alert('This game is already ended');
+            return;
+        }
+
         window.location.href = `/admin/manual-stats?gameId=${selectedGameId}`;
     });
+
     
     $('#live-input-btn').click(function () {
         window.location.href = `/admin/start-game`;
     });
+
 });
+
 
 function loadGames() {
     $.get(`${API}/api/games/all-games`, function (res) {
@@ -60,6 +66,27 @@ function loadStats(gameId) {
 
         renderTable(stats);
         renderTeamSummary(stats);
+    });
+}
+
+// Load AI generated game insights
+function loadInsights(gameId) {
+    $.get(`/api/games/${gameId}/insights`, function (res) {
+        
+        console.log("INSIGHTS RESPONSE:", res); // DEBUG
+
+        const data = res.insights;
+
+        if (!data) {
+            $('#insights-box').html("No insights available");
+            return;
+        }
+
+        $('#insights-box').html(data.replace(/\n/g, "<br>"));
+
+    }).fail(function (err) {
+        console.error("Insights error:", err);
+        $('#insights-box').html("Failed to load insights");
     });
 }
 
@@ -125,7 +152,7 @@ function renderTeamSummary(stats) {
     $('#opp-ast').text(opp.ast);
 
     renderCharts(home, opp);
-    generateInsights(home, opp);
+    // generateInsights(home, opp);
 }
 
 
@@ -172,6 +199,8 @@ function renderCharts(home, opp) {
     });
 }
 
+
+// defunct**
 function generateInsights(home, opp) {
 
     let insights = [];
@@ -207,4 +236,3 @@ function generateInsights(home, opp) {
         $('#insights-box').html(insights.join('<br>'));
     }
 }
-

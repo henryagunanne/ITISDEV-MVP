@@ -10,12 +10,13 @@ router.use(isAuthenticated);
 // Create a new game
 router.post('/create', authorize('Coach', 'Statistician'), gameController.createGame);
 
-// Get all games
+// Get all games (Optionally filter by tournament)
 router.get('/all-games', authorize('Coach', 'Statistician'), gameController.getGames);
 
 
 // Get game by date range
 router.get('/date-range', authorize('Coach', 'Statistician'), gameController.getGamesByDateRange);
+
 // Get Games by Team Score Range
 router.get('/team-score-range', authorize('Coach', 'Statistician'), gameController.getGamesByTeamScoreRange);
 
@@ -49,6 +50,9 @@ router.get('/:gameId/stats', authorize('Coach', 'Statistician'), gameController.
 
 // GET events for a game
 router.get('/:gameId/events',  authorize('Coach', 'Statistician'), gameController.loadEvents);
+
+// GET generate AI insights for a game
+router.get('/:gameId/insights', authorize('Coach'), gameController.generateInsights);
 
 
 // Get games by Tournament ID

@@ -1,3 +1,7 @@
+/* 
+    Handles the interactiviy, logic and frontend requests of the reports viewing page
+*/
+
 // const socket = io();
 
 let filters = {

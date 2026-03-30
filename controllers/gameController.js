@@ -4,6 +4,10 @@ const GameEvent = require('../models/GameEvents');
 const GameStats = require('../models/GameStats');
 const Player = require('../models/Player');
 
+const OpenAI = require("openai");
+const openai = new OpenAI({ 
+    apiKey: process.env.OPENAI_API_KEY 
+});
 
 // Helper: get period key from period number 
 function periodKey(period) {
@@ -370,6 +374,166 @@ exports.loadEvents = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+// Generate game insights using OpenAI
+exports.generateInsights = async (req, res) => {
+    try {
+        const gameId = req.params.gameId;
+
+        const game = await Game.findById(gameId).lean();
+        const stats = await GameStats.find({ gameId }).lean();
+
+        if (!game) {
+            return res.status(404).json({ error: "Game not found" });
+        }
+
+        // Aggregate Team Stats
+        let team = { pts: 0, reb: 0, ast: 0, fgMade: 0, fgAtt: 0, to: 0 };
+        let opp = { pts: 0, reb: 0, ast: 0, fgMade: 0, fgAtt: 0, to: 0 };
+
+        stats.forEach(s => {
+            const target = s.team === 'lasalle' ? team : opp;
+
+            Object.values(s.periodStats).forEach(period => {
+                if (!period) return;
+
+                target.pts += period.points || 0;
+                target.reb += (period.offensiveRebounds || 0) + (period.defensiveRebounds || 0);
+                target.ast += period.assists || 0;
+                target.fgMade += period.fieldGoalsMade || 0;
+                target.fgAtt += period.fieldGoalsAttempted || 0;
+                target.to += period.turnovers || 0;
+            });
+        });
+
+        const fgTeam = team.fgAtt ? (team.fgMade / team.fgAtt * 100).toFixed(1) : 0;
+        const fgOpp = opp.fgAtt ? (opp.fgMade / opp.fgAtt * 100).toFixed(1) : 0;
+
+
+
+        // ---- calculate win probability ----
+
+        // Get past games vs opponent
+        const pastGames = await Game.find({
+            opponent: game.opponent,
+            status: 'ENDED'
+        })
+        .sort({ gameDate: -1 })
+        .limit(5)
+        .lean();
+        
+        // compute data for insights
+        let wins = 0;
+        let totalMargin = 0;
+        let totalTeamScore = 0;
+        let totalOppScore = 0;
+
+        pastGames.forEach(g => {
+            if (g.teamScore > g.opponentScore) wins++;
+
+            const margin = g.teamScore - g.opponentScore;
+            totalMargin += margin;
+
+            totalTeamScore += g.teamScore;
+            totalOppScore += g.opponentScore;
+        });
+
+        const gamesCount = pastGames.length;
+
+        const avgMargin = gamesCount ? (totalMargin / gamesCount).toFixed(1) : 0;
+        const avgTeamScore = gamesCount ? (totalTeamScore / gamesCount).toFixed(1) : 0;
+        const avgOppScore = gamesCount ? (totalOppScore / gamesCount).toFixed(1) : 0;
+
+
+        let winProb = 50;
+
+        const scoreDiff = team.pts - opp.pts;
+
+        winProb += (wins / gamesCount) * 20; 
+
+        // clamp
+        winProb = Math.max(0, Math.min(100, winProb));
+
+
+
+        // Build RAG Context
+        const context = `
+            Game Status: ${game.status}
+            Period: ${game.currentPeriod}
+
+            Score:
+            La Salle: ${team.pts}
+            Opponent: ${opp.pts}
+
+            Team Stats:
+            FG%: ${fgTeam}
+            Rebounds: ${team.reb}
+            Assists: ${team.ast}
+            Turnovers: ${team.to}
+
+            Opponent Stats:
+            FG%: ${fgOpp}
+            Rebounds: ${opp.reb}
+            Assists: ${opp.ast}
+            Turnovers: ${opp.to}
+
+            Estimated Win Probability (La Salle): ${winProb}%
+        `;
+
+        const historicalContext = `
+            Historical Matchup Data:
+            - Last ${gamesCount} games vs ${game.opponent}
+            - Wins: ${wins}, Losses: ${gamesCount - wins}
+            - Average scoring margin: ${avgMargin}
+            - Average score: La Salle ${avgTeamScore} - Opponent ${avgOppScore}
+        `;
+
+        
+        const fullContext = `
+            ${context}
+
+            ${historicalContext}
+        `;
+
+        // Prompt Engineering
+        const prompt = `
+            You are a basketball analytics assistant.
+
+            Analyze the game and provide:
+            1. Key insights (why a team is winning/losing)
+            2. Strengths and weaknesses
+            3. Tactical suggestions
+
+            If the game is LIVE (i.e. the game status is neither ENDED nor NOT_STARTED), also include:
+            4. Win probability (%) for each team
+
+            Be concise and structured.
+        `;
+
+        // LLM Call
+        const response = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [
+                { role: "system", content: prompt },
+                { role: "user", content: fullContext }
+            ],
+            temperature: 0.7
+        });
+
+        const insights = response.choices[0].message.content;
+
+        res.json({
+            gameId,
+            insights
+        });
+
+    } catch (err) {
+        res.status(500).json({ 
+            error: err.message 
+        });
+    }
+};
+
 
 
 // Get Games by Tournament - returns all games for a specific tournament, sorted by date (newest first)
