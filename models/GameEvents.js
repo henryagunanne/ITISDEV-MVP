@@ -28,6 +28,9 @@ const gameEventSchema = new mongoose.Schema({
     gameClock: {
         type: String // "08:32"
     },
+    gameTimeSeconds: {
+        type: Number
+    },
     eventType: {
         type: String,
         enum: [
@@ -42,7 +45,8 @@ const gameEventSchema = new mongoose.Schema({
             "block",
             "turnover",
             "foul",
-            "substitution"
+            "sub_in",
+            "sub_out"
         ]
     },
     shotType: {

@@ -368,8 +368,12 @@ function updateControls() {
         $('#ctrl-ot').addClass('d-none');
     }  
     
-
+    
     if (!isRunning) {
+        $('.sub-btn').on('click', function () {
+            toggleOnCourt(this);
+        });
+        /*
         const isFirstQuarter = period === 1;
         const isequal10Min = clockSeconds === 600;
 
@@ -386,6 +390,7 @@ function updateControls() {
                 recordStat(this, 'substitution');
             });
         }
+        */
     }
     
 }
@@ -434,6 +439,9 @@ window.toggleOnCourt = function (btn) {
         return;
     }
 
+    // Determine the event type based on the current state before toggling
+    const eventType = isOn ? 'sub_out' : 'sub_in';
+
     row.data('oncourt', !isOn);
 
     if (!isOn) {
@@ -443,6 +451,9 @@ window.toggleOnCourt = function (btn) {
     }
 
     reorderPlayers(container);
+
+    // Record the specific sub event
+    recordStat(btn, eventType);
 }
 
 // ===================== STAT RECORDING =====================
@@ -707,19 +718,61 @@ function stopClock() {
 
 // Game controls
 $('#ctrl-start').click(function () {
+    const period = gameData?.currentPeriod || 0;
+    console.log(gameData);
+
+    const isFirstQuarter = period === 1;
+    const isEqual10Min = clockSeconds === 600;  // 10:00
+
+    let homeStarters = [];
+    let awayStarters = [];
+
+    // check if the game is just starting
+    if (isFirstQuarter && isEqual10Min) {
+        // Gather the 5 starters from DOM
+        $('#home-players-panel .on-court').each(function() {
+            homeStarters.push($(this).data('player-id'));
+        });
+
+        $('#opp-players-panel .on-court-opp').each(function() {
+            awayStarters.push($(this).data('jersey'));
+        });
+
+        // Prevent game start if there aren't 5 players
+        if (homeStarters.length !== 5 || awayStarters.length !== 5) {
+            alert("You must have exactly 5 players on the court for both teams to start the game.");
+            return; // Stop execution, don't send the AJAX request
+        } 
+    
+    } else {
+        // If the game is just resuming from a pause, we don't want to send empty arrays 
+        // that might accidentally overwrite the starters in your backend.
+        homeStarters = undefined;
+        awayStarters = undefined;
+    }
+    
     $.ajax({ 
         url: `${API}/api/games/${gameId}`,
         method: 'PATCH', 
         contentType: 'application/json',
-        data: JSON.stringify({ status: 'PLAYING' }),
+        data: JSON.stringify({ 
+            status: 'PLAYING',
+            homeStarters: homeStarters,
+            awayStarters: awayStarters
+        }),
         success: function (res) {
-            gameData = res.game;
+            gameData = res.updatedGame || res;
             startClock();
             $('#ctrl-start').addClass('d-none');
             $('#ctrl-pause').removeClass('d-none');
+        },
+        error: function(err) {
+            console.error("Failed to start/resume game:", err);
+            alert("Failed to start the game. Check the console.");
         }
     });
 });
+
 
 $('#ctrl-pause').click(function () {
     $.ajax({ 
@@ -728,7 +781,7 @@ $('#ctrl-pause').click(function () {
         contentType: 'application/json',
         data: JSON.stringify({ status: 'PAUSED' }),
         success: function (res) {
-            gameData = res.game;
+            gameData = res.updatedGame || res;
             stopClock();
             $('#ctrl-pause').addClass('d-none');
             $('#ctrl-resume').removeClass('d-none');
@@ -743,7 +796,7 @@ $('#ctrl-resume').click(function () {
         contentType: 'application/json',
         data: JSON.stringify({ status: 'PLAYING' }),
         success: function (res) {
-            gameData = res.game;
+            gameData = res.updatedGame || res;
             startClock();
             $('#ctrl-resume').addClass('d-none');
             $('#ctrl-pause').removeClass('d-none');
@@ -768,7 +821,7 @@ $('#ctrl-next-q').click(function () {
             status: 'PAUSED' 
         }),
         success: function (res) {
-            gameData = res.game;
+            gameData = res.updatedGame || res;
             updateScoreboard();
             $('#ctrl-pause').addClass('d-none');
             $('#ctrl-resume').removeClass('d-none');
@@ -783,7 +836,7 @@ $('#ctrl-ot').click(function () {
         url: `${API}/api/games/${gameId}/overtime`, 
         method: 'POST',
         success: function (res) {
-            gameData = res.game;
+            gameData = res.game || res;
             clockSeconds = 300;
             updateClockDisplay();
             updateScoreboard();
@@ -802,11 +855,12 @@ $('#ctrl-end').click(function () {
         contentType: 'application/json',
         data: JSON.stringify({ status: 'ENDED' }),
         success: function (res) {
-            gameData = res.game;
+            gameData = res.updatedGame || res;
             $('#game-controls').html('<span class="badge bg-danger">FINAL</span>');
         }
     });
 });
+
 
 // Sync clock to server periodically
 let isSyncing = false;

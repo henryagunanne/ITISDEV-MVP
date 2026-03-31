@@ -216,32 +216,44 @@ function exportPDF() {
 }
 
 async function loadInsights() {
-  const query = new URLSearchParams(filters).toString();
+    const query = new URLSearchParams(filters).toString();
 
-  const res = await fetch(`/api/analytics/insights?${query}`);
-  const data = await res.json();
+    try {
+        const res = await fetch(`/api/analytics/insights?${query}`);
+        const data = await res.json();
 
-  document.getElementById("aiInsights").innerHTML = formatReport(data.insights);
+        if (!data || !data.insights) {
+            document.getElementById("aiInsights").innerHTML = "No insights available.";
+            return;
+        }
+
+        document.getElementById("aiInsights").innerHTML = formatReport(data.insights);
+    } catch (err) {
+        console.error("Error fetching insights:", err);
+        document.getElementById("aiInsights").innerHTML = "Failed to load insights.";
+    }
 }
 
 
-function formatReport(text) {
-
-  const sections = text.split(/\d+\.\s/).filter(s => s.trim() !== "");
-
+function formatReport(insightsData) {
   let html = "";
 
-  sections.forEach(section => {
+  // Loop through the keys (titles) and values (arrays of strings) dynamically
+  for (const [title, contentArray] of Object.entries(insightsData)) {
+    
+    // Skip this section if the AI returned an empty array for it
+    if (!contentArray || contentArray.length === 0) continue;
 
-    let title = section.split("\n")[0].replace(":", "");
-    let content = section.replace(section.split("\n")[0], "");
+    // Build the unordered list
+    let listHtml = '<ul class="mb-2">';
+    contentArray.forEach(item => {
+        // We can keep a simple regex just in case the AI bolds text within the array string
+        let formattedItem = item.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        listHtml += `<li>${formattedItem}</li>`;
+    });
+    listHtml += '</ul>';
 
-    content = content
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/^\* (.*)$/gm, '<li>$1</li>')
-      .replace(/(<li>.*<\/li>)/gs, '<ul class="mb-2">$1</ul>')
-      .replace(/\n/g, '<br>');
-
+    // Build and append the card HTML
     html += `
       <div class="card insight-card mb-3 border-0">
         <div class="card-body">
@@ -249,12 +261,12 @@ function formatReport(text) {
             ${title}
           </h6>
           <div class="small text-muted">
-            ${content}
+            ${listHtml}
           </div>
         </div>
       </div>
     `;
-  });
+  }
 
   return html;
 }

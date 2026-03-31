@@ -243,7 +243,7 @@ const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
   // Create GameEvents for completed games
   const eventTypes = [
     "shot made","shot missed","free throw made","free throw missed",
-    "offensive rebound","defensive rebound","assist","steal","block","turnover","foul","substitution"
+    "offensive rebound","defensive rebound","assist","steal","block","turnover","foul","sub_in", "sub_out"
   ];
   const shotTypes = ["2PT","3PT","FT",""];
   const eventsData = [];

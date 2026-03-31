@@ -77,7 +77,8 @@ function loadInsights(gameId) {
 
         const data = res.insights;
 
-        if (!data) {
+        // Ensure data exists and has at least one key with content
+        if (!data || Object.keys(data).length === 0) {
             $('#insights-box').html("No insights available");
             return;
         }
@@ -91,49 +92,52 @@ function loadInsights(gameId) {
 }
 
 // helper to improve insights UI display
-function formatInsights(text) {
+function formatInsights(data) {
     let html = "";
 
-    // Split sections
-    const sections = text.split(/\d+\.\s/).filter(s => s.trim() !== "");
-
-    sections.forEach(section => {
-
-        let title = section.split("\n")[0];
-        let content = section.replace(title, "");
-
-        const lower = title.toLowerCase();
-
-        if (lower.includes("key insights")) {
-            html += createCard("Key Insights", content);
-        } 
-        if (lower.includes("strengths")) {
-            html += createCard("Strengths & Weaknesses", content);
-        } 
-        if (lower.includes("tactical")) {
-            html += createCard("Tactical Suggestions", content);
-        }
-        if (lower.includes("win")) {
-            html += createCard("Win Probability", content);
-        }
-    });
+    // Safely check and render each section from the JSON
+    if (data.keyInsights && data.keyInsights.length > 0) {
+        html += createCard("Key Insights", data.keyInsights);
+    } 
+    
+    if (data.strengthsAndWeaknesses && data.strengthsAndWeaknesses.length > 0) {
+        html += createCard("Strengths & Weaknesses", data.strengthsAndWeaknesses);
+    } 
+    
+    if (data.tacticalSuggestions && data.tacticalSuggestions.length > 0) {
+        html += createCard("Tactical Suggestions", data.tacticalSuggestions);
+    }
+    
+    if (data.winProbability) {
+        html += createCard("Win Probability", data.winProbability);
+    }
 
     return html;
 }
 
 // helper to improve insights UI display
 function createCard(title, content) {
-    content = content
-        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-        .replace(/^\* (.*)$/gm, "<li>$1</li>")
-        .replace(/(<li>.*<\/li>)/gs, "<ul>$1</ul>")
-        .replace(/\n/g, "<br>");
+    let contentHtml = "";
+
+    // Check if the content is an array (for our bullet points) or a string (for win prob)
+    if (Array.isArray(content)) {
+        contentHtml = `<ul>`;
+        content.forEach(item => {
+            // Optional: Basic bolding replacement if AI still slips in markdown
+            let formattedItem = item.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+            contentHtml += `<li>${formattedItem}</li>`;
+        });
+        contentHtml += `</ul>`;
+    } else {
+        // Handle simple strings
+        contentHtml = `<p class="mb-0">${content.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")}</p>`;
+    }
 
     return `
         <div class="insight-card mb-3">
             <h6 class="fw-bold text-success">${title}</h6>
             <div class="text-muted small">
-                ${content}
+                ${contentHtml}
             </div>
         </div>
     `;

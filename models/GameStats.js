@@ -58,7 +58,15 @@ const gameStatsSchema = new mongoose.Schema({
         enum: ['lasalle', 'opponent'], 
         required: true 
     },
-
+    // --- Global minute tracking fields ---
+    isOnCourt: { 
+        type: Boolean, 
+        default: false 
+    },
+    lastSubInTime: { 
+        type: Number, 
+        default: null // Will store gameTimeSeconds
+    },
     // Stats per quarter
     periodStats: {
 

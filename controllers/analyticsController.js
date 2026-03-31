@@ -1460,30 +1460,42 @@ exports.getGameSummaries = async (req, res) => {
 };
 
 
-// fallback funtion to generate insights if AI fails
+// Fallback function to generate insights if AI fails
 function generateFallbackInsights(summary, players) {
-    let insights = [];
+    // Define the exact structure the frontend is expecting
+    const fallbackData = {
+        "Team Performance Insights": [],
+        "Key Player Observations": [],
+        "Recommendations": []
+    };
 
+    // Populate Team Performance & Recommendations
     if (summary.winRate < 50) {
-        insights.push("Team is underperforming. Focus on defense and shot selection.");
+        fallbackData["Team Performance Insights"].push(`The team is currently underperforming with a ${summary.winRate.toFixed(1)}% win rate.`);
+        fallbackData["Recommendations"].push("Focus heavily on defensive transitions and better shot selection.");
     } else {
-        insights.push("Team is performing well with a solid win rate.");
+        fallbackData["Team Performance Insights"].push(`The team is performing well with a solid ${summary.winRate.toFixed(1)}% win rate.`);
+        fallbackData["Recommendations"].push("Maintain current offensive pacing and rotation strategies.");
     }
 
+    // Populate Key Player Observations
     const topPlayer = players[0];
     if (topPlayer) {
-        insights.push(`${topPlayer.name} is leading with ${topPlayer.ppg} PPG.`);
+        fallbackData["Key Player Observations"].push(`${topPlayer.name} is leading the team with ${topPlayer.ppg} PPG.`);
     }
 
     const inefficient = players.find(p => p.tsPercentage < 50);
     if (inefficient) {
-        insights.push(`${inefficient.name} has low shooting efficiency.`);
+        fallbackData["Key Player Observations"].push(`${inefficient.name} is currently struggling with shooting efficiency.`);
+        fallbackData["Recommendations"].push(`Consider adjusting offensive sets to get higher percentage looks for ${inefficient.name}.`);
     }
 
-    return insights.join(" ");
+    // Return the object directly
+    return fallbackData;
 }
 
-// Generate AI insights with OpenAI
+
+// Generate AI insights with AI
 exports.getAIInsights = async (req, res) => {
     try {
         const { season } = req.query;
@@ -1507,25 +1519,31 @@ exports.getAIInsights = async (req, res) => {
     
         // 3. GENERATE INSIGHT USING LLM
         const model = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash"
+            model: "gemini-2.5-flash",
+            generationConfig: {
+                responseMimeType: "application/json" // Enforce structured output
+            }
         });
         
-        let insights = "";
+        let insights = {};
         
         try {
             const result = await model.generateContent(`
                 You are a basketball analyst.
                 
-                Analyze the season data and provide:
-                - Team performance insights
-                - Key player observations
-                - Recommendations
+                Analyze the season data
+                Return ONLY a JSON object strictly matching this structure. Do not use markdown blocks.
+                {
+                    "Team Performance Insights": ["insight 1", "insight 2"],
+                    "Key Player Observations": ["observation 1", "observation 2"],
+                    "Recommendations": ["recommendation 1", "recommendation 2"]
+                }
                 
                 DATA:
                 ${context}
             `);
         
-            insights = result.response.text();
+            insights = JSON.parse(result.response.text()); // Parse the JSON string into an object
         
         } catch (aiError) {
             console.error("Gemini failed:", aiError.message);

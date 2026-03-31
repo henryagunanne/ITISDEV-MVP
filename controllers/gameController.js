@@ -80,6 +80,37 @@ async function updateStatsForEvent(event, reverse = false) {
         case 'block': periodObj.blocks += d; break;
         case 'turnover': periodObj.turnovers += d; break;
         case 'foul': periodObj.fouls += d; break;
+        case 'sub_in':
+            if (reverse) {
+                stats.isOnCourt = false;
+                stats.lastSubInTime = null;
+                // If reversing a sub_in, we'd theoretically need to subtract the time they played 
+                // until they subbed out again. For simplicity, complex undo logic for minutes 
+                // is often handled via a separate dedicated recalculation function.
+            } else {
+                stats.isOnCourt = true;
+                stats.lastSubInTime = event.gameTimeSeconds;
+            }
+            break;
+
+        case 'sub_out':
+            if (reverse) {
+                stats.isOnCourt = true;
+                stats.lastSubInTime = event.gameTimeSeconds;
+            } else {
+                if (stats.isOnCourt && stats.lastSubInTime !== null) {
+                    // Calculate seconds played
+                    const secondsPlayed = event.gameTimeSeconds - stats.lastSubInTime;
+                    
+                    // Convert to fractional minutes (e.g., 90 seconds = 1.5 minutes)
+                    const minutesPlayed = secondsPlayed / 60;
+                    
+                    periodObj.minutesPlayed += minutesPlayed;
+                }
+                stats.isOnCourt = false;
+                stats.lastSubInTime = null;
+            }
+            break;
     }
 
     stats.markModified('periodStats');
@@ -106,6 +137,48 @@ async function updateStatsForEvent(event, reverse = false) {
     }
 
     return stats;
+}
+
+
+// Helper: Flush and credit minutes for players currently on the court at the end of a period
+async function flushOnCourtMinutes(gameId, periodToCredit, currentTimeSeconds, isGameEnding = false) {
+    const stats = await GameStats.find({ gameId, isOnCourt: true });
+    
+    for (let stat of stats) {
+        if (stat.lastSubInTime !== null) {
+            const secondsPlayed = currentTimeSeconds - stat.lastSubInTime;
+            
+            if (secondsPlayed > 0) {
+                const pk = periodKey(periodToCredit);
+                let periodObj;
+                if (pk) {
+                    periodObj = stat.periodStats[pk];
+                } else {
+                    const otIndex = periodToCredit - 5;
+                    while (stat.periodStats.overtimes.length <= otIndex) {
+                        stat.periodStats.overtimes.push({});
+                    }
+                    periodObj = stat.periodStats.overtimes[otIndex];
+                }
+                
+                // Add the fraction of minutes played to this specific period
+                periodObj.minutesPlayed = (periodObj.minutesPlayed || 0) + (secondsPlayed / 60);
+            }
+        }
+        
+        if (isGameEnding) {
+            // Game is over, take everyone off the court
+            stat.isOnCourt = false;
+            stat.lastSubInTime = null;
+        } else {
+            // Moving to the next period. 
+            // Reset their "sub in" time to the exact start of the new period so they keep accumulating.
+            stat.lastSubInTime = currentTimeSeconds;
+        }
+        
+        stat.markModified('periodStats');
+        await stat.save();
+    }
 }
 
 
@@ -247,18 +320,83 @@ exports.getGameById = async (req, res) => {
 // update a game status/period
 exports.updateGameStatus = async (req, res) => {
     try {
-        const updates = {};
-        if (req.body.status) updates.status = req.body.status;
-        if (req.body.currentPeriod) updates.currentPeriod = req.body.currentPeriod;
-        if (req.body.gameClock) updates.gameClock = req.body.gameClock;
+        const game = await Game.findById(req.params.gameId);
+        if (!game) return res.status(404).json({ error: 'Game not found' });
 
+        const oldPeriod = game.currentPeriod;
+        const oldStatus = game.status;
 
-        const game = await Game.findByIdAndUpdate(req.params.gameId, updates, { returnDocument: 'after' });
-        res.json(game);
+        // Apply incoming updates
+        if (req.body.status) game.status = req.body.status;
+        if (req.body.currentPeriod) game.currentPeriod = req.body.currentPeriod;
+        if (req.body.gameClock) game.gameClock = req.body.gameClock;
+
+        // CHECK FOR PERIOD END OR GAME END
+        const isPeriodChanging = req.body.currentPeriod && req.body.currentPeriod > oldPeriod;
+        const isGameEnding = req.body.status === 'ENDED' && oldStatus !== 'ENDED';
+
+        if (isPeriodChanging || isGameEnding) {
+            // Calculate elapsed time precisely at the 00:00 mark of the ending period
+            const endTimeSeconds = computeGameTimeSeconds(oldPeriod, "00:00"); 
+            await flushOnCourtMinutes(game._id, oldPeriod, endTimeSeconds, isGameEnding);
+        }
+
+        // CHECK FOR GAME START (Initialize Starters)
+        if (req.body.status === 'PLAYING' && oldStatus === 'NOT_STARTED') {
+            const { homeStarters, awayStarters } = req.body;
+            
+            // If the frontend sends arrays of starter IDs/Jersey numbers when starting the game
+            if (homeStarters && homeStarters.length > 0) {
+                await GameStats.updateMany(
+                    { gameId: game._id, team: 'lasalle', playerId: { $in: homeStarters } },
+                    { $set: { isOnCourt: true, lastSubInTime: 0 } }
+                );
+            }
+            if (awayStarters && awayStarters.length > 0) {
+                await GameStats.updateMany(
+                    { gameId: game._id, team: 'opponent', opponentPlayerIndex: { $in: awayStarters } },
+                    { $set: { isOnCourt: true, lastSubInTime: 0 } }
+                );
+            }
+        }
+
+        const updatedGame = await game.save();
+        res.json(updatedGame);
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
 };
+
+
+
+
+// Helper function to convert time to seconds
+function clockToSeconds(clock) {
+    const [min, sec] = clock.split(':').map(Number);
+    return (min * 60) + sec;
+}
+
+// Helper function to compute the elapsed game time in seconds
+function computeGameTimeSeconds(period, gameClock) {
+    const regularPeriods = 4;
+    const quarterLength = 600;
+    const overtimeLength = 300;
+
+    const clockSeconds = clockToSeconds(gameClock);
+
+    let elapsed = 0;
+
+    if (period <= regularPeriods) {
+        elapsed += (period - 1) * quarterLength;
+        elapsed += (quarterLength - clockSeconds);
+    } else {
+        elapsed += regularPeriods * quarterLength;
+        elapsed += (period - regularPeriods - 1) * overtimeLength;
+        elapsed += (overtimeLength - clockSeconds);
+    }
+
+    return elapsed;
+}
 
 //  record a game event
 exports.recordGameEvent = async (req, res) => {
@@ -275,6 +413,11 @@ exports.recordGameEvent = async (req, res) => {
             points = 1;
         }
 
+        const gameTimeSeconds = computeGameTimeSeconds(
+            game.currentPeriod,
+            gameClock
+        );
+
         const event = new GameEvent({
             gameId: game._id,
             team,
@@ -282,6 +425,7 @@ exports.recordGameEvent = async (req, res) => {
             opponentPlayer: team === 'opponent' ? opponentPlayer : undefined,
             period: game.currentPeriod,
             gameClock: gameClock || game.gameClock,
+            gameTimeSeconds,
             eventType,
             shotType: shotType || '',
             points,
@@ -377,7 +521,7 @@ exports.loadEvents = async (req, res) => {
     }
 };
 
-// Generate game insights using OpenAI
+// Generate game insights using AI
 exports.generateInsights = async (req, res) => {
     try {
         const gameId = req.params.gameId;
@@ -500,31 +644,23 @@ exports.generateInsights = async (req, res) => {
         const prompt = `
             You are a basketball analytics assistant.
 
-            Format your response EXACTLY like this:
-
-            1. KEY INSIGHTS
-            - insight 1
-            - insight 2
-            - insight 3
-
-            2. STRENGTHS & WEAKNESSES
-            - strengths...
-            - weaknesses...
-
-            3. TACTICAL SUGGESTIONS
-            - suggestion 1
-            - suggestion 2
-            - suggestion 3...
-
-            If the game is LIVE (i.e. the game status is neither ENDED nor NOT_STARTED), also include:
-            4. Win probability (%) for each team
-
-            Be concise and structured.
+            Analyze the provided game data and return a JSON object strictly matching this structure. 
+            Do NOT include markdown formatting or code blocks.
+            
+            {
+                "keyInsights": ["insight 1", "insight 2", "insight 3"],
+                "strengthsAndWeaknesses": ["point 1", "point 2"],
+                "tacticalSuggestions": ["suggestion 1", "suggestion 2"],
+                "winProbability": ["Estimated Win Probability (La Salle): 55%", "Estimated Win Probability (${game.opponent}): 55%"] // Optional: Only include if the game status is not ENDED or NOT_STARTED
+            }
         `;
 
         // LLM Call
         const model = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash"
+            model: "gemini-2.5-flash",
+            generationConfig: {
+                responseMimeType: "application/json", // guarantees valid JSON output
+            }
         });
         
         const result = await model.generateContent(`
@@ -539,14 +675,16 @@ exports.generateInsights = async (req, res) => {
             - Do NOT repeat raw stats
         `);
         
-        const insights = result.response.text();
+        // Parse JSON output
+        const insightsJSON = JSON.parse(result.response.text());
 
         res.json({
             gameId,
-            insights
+            insights: insightsJSON
         });
 
     } catch (err) {
+        console.error("Backend error:", err);
         res.status(500).json({ 
             error: err.message 
         });
