@@ -1280,8 +1280,8 @@ exports.deleteGame = async (req, res) => {
         //  Cascade delete linked data (GameStats and GameEvents)
         // Using Promise.all allows both database queries to run at the same time for better performance
         await Promise.all([
-            GameStats.deleteMany({ gameId: gameId }),
-            GameEvent.deleteMany({ gameId: gameId })
+            GameStats.deleteMany({ gameId: req.params.gameId }),
+            GameEvent.deleteMany({ gameId: req.params.gameId })
         ]);
 
         return res.json({ 
