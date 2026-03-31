@@ -215,7 +215,7 @@ function computeGameTimeSeconds(period, gameClock) {
 // Create a new game
 exports.createGame = async (req, res) => {
     try { 
-        const { opponent, opponentPlayers, tournament, venue, gameDate, startTime, status, teamScore, opponentScore, currentPeriod, gameClock, quarterScores } = req.body;
+        const { opponent, opponentPlayers, tournament, players, venue, gameDate, startTime, status, teamScore, opponentScore, currentPeriod, gameClock, quarterScores } = req.body;
         if (!opponent) return res.status(400).json({ message: 'Opponent name required' });
 
         // For live game tracking (requires opponent players)
@@ -263,11 +263,14 @@ exports.createGame = async (req, res) => {
         await game.save();
 
         // Only create GameStats for live game tracking
-        if (opponentPlayers && opponentPlayers.length > 0) {
+        if (opponentPlayers && opponentPlayers.length > 0 && players && players.length > 0) {
             // Create GameStats entries for all home players
-            const homePlayers = await Player.find({ status: 'Active' });
-            for (const p of homePlayers) {
-                const gs = new GameStats({ gameId: game._id, playerId: p._id, team: 'lasalle' });
+            for (const playerId of players) {
+                const gs = new GameStats({ 
+                    gameId: game._id, 
+                    playerId: playerId, 
+                    team: 'lasalle' 
+                });
                 await gs.save();
                 game.players.push(gs._id);
             }
@@ -1273,9 +1276,25 @@ exports.deleteGame = async (req, res) => {
         if (!game) {
             return res.status(404).json({ success: false, message: "Game not found." });
         }
-        return res.json({ success: true });
+
+        //  Cascade delete linked data (GameStats and GameEvents)
+        // Using Promise.all allows both database queries to run at the same time for better performance
+        await Promise.all([
+            GameStats.deleteMany({ gameId: gameId }),
+            GameEvent.deleteMany({ gameId: gameId })
+        ]);
+
+        return res.json({ 
+            success: true, 
+            message: "Game and all associated stats and events were successfully deleted." 
+        });
     } catch (error) {
-        return res.status(500).json({ success: false, message: "Error deleting game.", error: error.message });
+        console.error("Error deleting game:", error);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Error deleting game.", 
+            error: error.message 
+        });
     }
 };
 

@@ -70,14 +70,24 @@ function loadHomePlayers() {
         players = res.players || [];
         homePlayers = players;
 
-        let html = '<table class="table table-sm table-dark mb-0"><thead><tr><th>#</th><th>Name</th><th>Pos</th></tr></thead><tbody>';
+        // Build a selectable list with checkboxes
+        let html = '<div class="list-group">';
         players.forEach(p => {
-            html += `<tr><td class="font-mono fw-bold">${p.jerseyNumber}</td><td>${p.firstName} ${p.lastName}</td><td><span class="badge bg-secondary">${p.position}</span></td></tr>`;
+            html += `
+                <label class="list-group-item d-flex justify-content-between align-items-center text-white bg-dark border-secondary" style="cursor: pointer;">
+                    <div>
+                        <input class="form-check-input me-2 home-player-checkbox" type="checkbox" value="${p._id}" checked>
+                        <span class="fw-bold">#${p.jerseyNumber}</span> ${p.firstName} ${p.lastName}
+                    </div>
+                    <span class="badge bg-success rounded-pill">${p.position}</span>
+                </label>
+            `;
         });
-        html += '</tbody></table>';
+        html += '</div>';
+
         $('#home-roster-preview').html(html);
     }).fail(function () {
-        $('#home-roster-preview').html('<div class="text-warning">⚠ Could not load players. Make sure players exist in the database.</div>');
+       $('#home-roster-preview').html('<div class="text-danger">Failed to load home roster.</div>');
     });
 }
 
@@ -85,8 +95,13 @@ function addOpponentRow() {
     const idx = $('.opp-player-entry').length;
     const html = `
         <div class="opp-player-entry d-flex gap-2 align-items-center">
-            <input type="number" class="form-control form-control-sm bg-light border-secondary text-dark opp-jersey" 
-                   placeholder="#" style="width:70px" min="0" max="99">
+        <input type="text" 
+                    inputmode="numeric" 
+                    pattern="[0-9]{1,2}" 
+                    maxlength="2"
+                    class="form-control form-control-sm bg-light border-secondary text-dark opp-jersey" 
+                    placeholder="#" 
+                    style="width:70px">
             <input type="text" class="form-control form-control-sm bg-light border-secondary text-dark opp-name" 
                    placeholder="Full Name" required>
             <select class="form-select form-select-sm bg-light border-secondary text-dark opp-pos" style="width:80px">
@@ -151,13 +166,33 @@ function startGame() {
         return;
     }
 
+    // collect the selected home players
+    const selectedHomePlayers = [];
+    $('.home-player-checkbox:checked').each(function() {
+        selectedHomePlayers.push($(this).val());
+    });
+
+    if (selectedHomePlayers.length < 5) {
+        $('#setup-error').text('Please select at least 5 Home players.').removeClass('d-none');
+        return;
+    }
+
+    const payload = {
+        opponent,
+        tournament,
+        opponentPlayers: oppPlayers,
+        players: selectedHomePlayers,
+        venue,
+        gameDate: new Date()
+    };
+
     $('#start-game-btn').prop('disabled', true).text('Creating game...');
 
     $.ajax({
         url: `${API}/api/games/create`,
         method: 'POST',
         contentType: 'application/json',
-        data: JSON.stringify({ opponent, tournament, opponentPlayers: oppPlayers, venue, gameDate: new Date() }),
+        data: JSON.stringify(payload),
         success: function (res) {
             game = res.data;
             gameId = game._id;
@@ -653,7 +688,7 @@ function renderEvents(events) {
         events.forEach(e => {
             const fullName = e.playerId?.firstName + " " + e.playerId?.lastName;
             const isHome = e.team === 'lasalle';
-            const jersey = isHome ? (e.playerId?.jerseyNumber || '?') : e.opponentPlayer?.jerseyNumber || '?';
+            const jersey = isHome ? (e.playerId?.jerseyNumber || '?') : (e.opponentPlayer?.jerseyNumber || '?');
             const name = isHome ? (fullName || 'Unknown') : (e.opponentPlayer?.fullName || 'Unknown');
             const teamTag = isHome ? '' : ' (OPP)';
             let colorClass = 'pbp-neutral';

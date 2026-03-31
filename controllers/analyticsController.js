@@ -1218,8 +1218,8 @@ async function getPlayerSummaryData(filters = {}) {
 
     let sortStage = {};
 
-    // 🔥 VALIDATE FIELD (prevents errors)
-    const validFields = ["ppg", "rpg", "apg", "efficiency", "tsPercentage"];
+    // VALIDATE FIELD (prevents errors)
+    const validFields = ["ppg", "rpg", "apg", "efficiency", "tsPercentage", "mpg"];
 
     if (validFields.includes(sortBy)) {
         sortStage[sortBy] = -1;
@@ -1257,6 +1257,7 @@ async function getPlayerSummaryData(filters = {}) {
                 gamesPlayed: { $sum: 1 },
 
                 // BASIC
+                totalMinutes: { $sum: "$totals.minutesPlayed" },
                 totalPoints: { $sum: "$totals.points" },
                 totalRebounds: {
                     $sum: {
@@ -1286,6 +1287,14 @@ async function getPlayerSummaryData(filters = {}) {
                 playerId: "$_id",
 
                 // PER GAME STATS
+                mpg: {
+                    $cond: [
+                        { $eq: ["$gamesPlayed", 0] },
+                        0,
+                        { $divide: ["$totalMinutes", "$gamesPlayed"] }
+                    ]
+                },
+
                 ppg: {
                     $cond: [
                         { $eq: ["$gamesPlayed", 0] },
@@ -1402,6 +1411,7 @@ async function getPlayerSummaryData(filters = {}) {
                     ]
                 },
 
+                mpg: { $round: ["$mpg", 1] },
                 ppg: { $round: ["$ppg", 1] },
                 rpg: { $round: ["$rpg", 1] },
                 apg: { $round: ["$apg", 1] },
@@ -1561,33 +1571,126 @@ exports.getAIInsights = async (req, res) => {
 
 // Export CSV reports
 exports.exportCSV = async (req, res) => {
-    const stats = await GameStats.find().populate('playerId', 'firstName lastName');
-  
-    let csv = "Player,Points,Rebounds,Assists\n";
-  
-    stats.forEach(s => {
-        const t = s.totals || {};
-        const rebounds = (t.offensiveRebounds || 0) + (t.defensiveRebounds || 0);
-        csv += `${s.playerId?.firstName} ${s.playerId?.lastName},${t.points},${rebounds},${t.assists}\n`;
-    });
-  
-    res.header('Content-Type', 'text/csv');
-    res.attachment('report.csv');
-    res.send(csv);
+    try {
+        // Use the existing helper to get filtered and sorted player data
+        const players = await getPlayerSummaryData(req.query);
+      
+        // Create CSV Headers
+        let csv = "Player,MPG,PPG,RPG,APG,Efficiency,TS%,UsageRate%\n";
+      
+        // Add player rows
+        players.forEach(p => {
+            // Wrap name in quotes in case it contains commas
+            csv += `"${p.name}",${p.mpg},${p.ppg},${p.rpg},${p.apg},${p.efficiency},${p.tsPercentage},${p.usageRate}\n`;
+        });
+      
+        res.header('Content-Type', 'text/csv');
+        res.attachment('report.csv');
+        res.send(csv);
+    } catch (err) {
+        console.error("Error exporting CSV:", err);
+        res.status(500).send("Error generating CSV");
+    }
 };
 
 
 // Export PDF reports
 const PDFDocument = require('pdfkit');
 exports.exportPDF =  async (req, res) => {
-  const doc = new PDFDocument();
+    try {
+        // Get both team summary and player summary based on filters
+        const summary = await computeReportSummary(req.query);
+        const players = await getPlayerSummaryData(req.query);
 
-  res.setHeader('Content-Type', 'application/pdf');
-  doc.pipe(res);
+        const doc = new PDFDocument({ margin: 50 });
 
-  doc.text("Team Performance Report");
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename="Team_Report.pdf"');
+        doc.pipe(res);
 
-  doc.end();
+        // --- TITLE ---
+        doc.fontSize(20).text("Team Performance Report", { align: 'center' });
+        doc.moveDown();
+
+        // --- ACTIVE FILTERS ---
+        const { season, opponent, startDate, endDate } = req.query;
+        let filterText = "Filters applied: ";
+        let hasFilters = false;
+        
+        if (season) { filterText += `Season: ${season} | `; hasFilters = true; }
+        if (opponent) { filterText += `Opponent: ${opponent} | `; hasFilters = true; }
+        if (startDate) { filterText += `From: ${startDate} | `; hasFilters = true; }
+        if (endDate) { filterText += `To: ${endDate}`; hasFilters = true; }
+        
+        if (hasFilters) {
+            // Remove trailing " | " if present
+            if (filterText.endsWith(" | ")) filterText = filterText.slice(0, -3);
+            doc.fontSize(10).fillColor('gray').text(filterText, { align: 'center' });
+            doc.moveDown();
+        }
+        doc.fillColor('black'); // Reset color
+
+        // --- TEAM SUMMARY SECTION ---
+        doc.fontSize(14).text("Team Summary", { underline: true });
+        doc.moveDown(0.5);
+        doc.fontSize(12)
+           .text(`Total Games Played: ${summary.totalGames}`)
+           .text(`Win / Loss Record: ${summary.wins}W - ${summary.losses}L`)
+           .text(`Win Rate: ${summary.winRate.toFixed(1)}%`)
+           .text(`Average Points Per Game: ${summary.avgPoints.toFixed(1)}`)
+           .text(`Overall Team Efficiency: ${summary.efficiency.toFixed(1)}`);
+        doc.moveDown(2);
+
+        // --- PLAYER STATS SECTION ---
+        doc.fontSize(14).text("Player Statistics", { underline: true });
+        doc.moveDown(0.5);
+
+        // Table settings
+        const startX = 50;
+        let currentY = doc.y;
+
+        // Draw Table Headers
+        doc.fontSize(10).font('Helvetica-Bold');
+        doc.text("Player Name", startX, currentY);
+        doc.text("MPG", startX + 150, currentY);
+        doc.text("PPG", startX + 190, currentY);
+        doc.text("RPG", startX + 230, currentY);
+        doc.text("APG", startX + 270, currentY);
+        doc.text("EFF", startX + 310, currentY);
+        doc.text("TS%", startX + 350, currentY);
+        doc.text("USG%", startX + 410, currentY);
+
+        doc.moveTo(startX, currentY + 15).lineTo(startX + 450, currentY + 15).stroke();
+        currentY += 25;
+
+        // Draw Player Rows
+        doc.font('Helvetica');
+        players.forEach(p => {
+            // Add a new page if we run out of vertical space
+            if (currentY > 700) {
+                doc.addPage();
+                currentY = 50; // Reset Y for new page
+            }
+
+            doc.text(p.name, startX, currentY);
+            doc.text(p.mpg.toString(), startX + 150, currentY);
+            doc.text(p.ppg.toString(), startX + 190, currentY);
+            doc.text(p.rpg.toString(), startX + 230, currentY);
+            doc.text(p.apg.toString(), startX + 270, currentY);
+            doc.text(p.efficiency.toString(), startX + 310, currentY);
+            doc.text(p.tsPercentage.toString(), startX + 350, currentY);
+            doc.text(p.usageRate.toString(), startX + 400, currentY);
+            
+            currentY += 20;
+        });
+
+        doc.end();
+    } catch (err) {
+        console.error("Error exporting PDF:", err);
+        if (!res.headersSent) {
+            res.status(500).send("Error generating PDF");
+        }
+    }
 };
 
 

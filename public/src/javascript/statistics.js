@@ -176,8 +176,8 @@ function renderTable(stats) {
 
 // Aggregate team stats
 function renderTeamSummary(stats) {
-    const home = { pts: 0, fgm: 0, fga: 0, reb: 0, ast: 0 };
-    const opp = { pts: 0, fgm: 0, fga: 0, reb: 0, ast: 0 };
+    const home = { pts: 0, fgm: 0, fga: 0, reb: 0, ast: 0, tpm:0, tpa: 0, ftm: 0, fta: 0 };
+    const opp = { pts: 0, fgm: 0, fga: 0, reb: 0, ast: 0, tpm:0, tpa: 0, ftm: 0, fta: 0 };
 
     stats.forEach(s => {
         const t = s.totals || {};
@@ -191,6 +191,10 @@ function renderTeamSummary(stats) {
         target.fga += fga || 0;
         target.reb += (t.offensiveRebounds || 0) + (t.defensiveRebounds || 0);
         target.ast += t.assists || 0;
+        target.tpm += t.threePointersMade;
+        target.tpa += t.threePointersAttempted;
+        target.ftm += t.freeThrowsMade;
+        target.fta += t.freeThrowsAttempted;
     });
 
     const pct = (m, a) => a ? ((m / a) * 100).toFixed(1) : '0.0';
@@ -218,6 +222,9 @@ function renderCharts(home, opp) {
     if (teamChart) teamChart.destroy();
     if (shootingChart) shootingChart.destroy();
 
+    const pointColors = home.pts > opp.pts ? 'green' : 'red';
+  
+
     // TEAM COMPARISON
     teamChart = new Chart(document.getElementById('teamChart'), {
         type: 'bar',
@@ -226,13 +233,32 @@ function renderCharts(home, opp) {
             datasets: [
                 {
                     label: 'La Salle',
-                    data: [home.pts, home.reb, home.ast]
+                    data: [home.pts, home.reb, home.ast],
+                    backgroundColor: '#006F3C',
+                    // borders to the bars
+                    borderColor: '#004d2a', 
+                    borderWidth: 1
                 },
                 {
                     label: 'Opponent',
-                    data: [opp.pts, opp.reb, opp.ast]
+                    data: [opp.pts, opp.reb, opp.ast],
+                    backgroundColor: '#dc3545',
+                    // Add borders to the bars
+                    borderColor: '#a71d2a',
+                    borderWidth: 1
                 }
             ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: true }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true 
+                }
+            }
         }
     });
 
@@ -241,14 +267,47 @@ function renderCharts(home, opp) {
         type: 'radar',
         data: {
             labels: ['FG%', '3PT%', 'FT%'],
-            datasets: [{
-                label: 'La Salle',
-                data: [
-                    pct(home.fgm, home.fga),
-                    pct(home.tpm, home.tpa),
-                    pct(home.ftm, home.fta)
-                ]
-            }]
+            datasets: [
+                {
+                    label: 'La Salle',
+                    data: [
+                        pct(home.fgm, home.fga),
+                        pct(home.tpm, home.tpa),
+                        pct(home.ftm, home.fta)
+                    ],
+                    // Using rgba for 20% opacity so the shapes overlap visibly
+                    backgroundColor: 'rgba(0, 111, 60, 0.2)', 
+                    borderColor: '#006F3C',         
+                    pointBackgroundColor: '#006F3C' 
+                },
+                {
+                    label: 'Opponent',
+                    data: [
+                        pct(opp.fgm, opp.fga),
+                        pct(opp.tpm, opp.tpa),
+                        pct(opp.ftm, opp.fta)
+                    ],
+                    // Using rgba for 20% opacity
+                    backgroundColor: 'rgba(220, 53, 69, 0.2)', 
+                    borderColor: '#dc3545',        
+                    pointBackgroundColor: '#dc3545' 
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: true }
+            },
+            scales: {
+                r: {
+                    min: 0,
+                    max: 100, // Locks the outer edge of the radar to 100%
+                    ticks: {
+                        stepSize: 20 // draws grid lines at 20, 40, 60, 80, 100
+                    }
+                }
+            }
         }
     });
 }

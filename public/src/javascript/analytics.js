@@ -32,7 +32,7 @@ $(document).ready(function () {
         }
     });
 
-    // 🔥 FILTER LISTENERS
+    // FILTER LISTENERS
 
     $("#seasonFilter").on("change", function () {
       filters.season = $(this).val();
@@ -115,6 +115,7 @@ async function loadPlayers() {
         <td>${safeNumber(p.ppg)}</td>
         <td>${safeNumber(p.rpg)}</td>
         <td>${safeNumber(p.apg)}</td>
+        <td>${safeNumber(p.mpg)}</td>
         <td>${safeNumber(p.efficiency)}</td>
         <td>${safeNumber(p.tsPercentage)}</td>
         <td>${safeNumber(p.usageRate)}</td>
@@ -135,8 +136,9 @@ function highlightColumn() {
       if (sortKey === "ppg") $(this).find("td:eq(1)").addClass("table-success");
       if (sortKey === "rpg") $(this).find("td:eq(2)").addClass("table-success");
       if (sortKey === "apg") $(this).find("td:eq(3)").addClass("table-success");
-      if (sortKey === "efficiency") $(this).find("td:eq(4)").addClass("table-success");
-      if (sortKey === "tsPercentage") $(this).find("td:eq(5)").addClass("table-success");
+      if (sortKey === "mpg") $(this).find("td:eq(4)").addClass("table-success");
+      if (sortKey === "efficiency") $(this).find("td:eq(5)").addClass("table-success");
+      if (sortKey === "tsPercentage") $(this).find("td:eq(6)").addClass("table-success");
   });
 }
 
@@ -207,12 +209,14 @@ function renderCharts(data) {
 
 // Export CSV
 function exportCSV() {
-  window.open("/api/analytics/export/csv", '_blank');
+    const query = new URLSearchParams(filters).toString();
+    window.open(`/api/analytics/export/csv?${query}`, '_blank');
 }
 
 // Export PDF
 function exportPDF() {
-    window.open("/api/analytics/export/pdf", '_blank');
+    const query = new URLSearchParams(filters).toString();
+    window.open(`/api/analytics/export/pdf?${query}`, '_blank');
 }
 
 async function loadInsights() {
