@@ -182,6 +182,36 @@ async function flushOnCourtMinutes(gameId, periodToCredit, currentTimeSeconds, i
 }
 
 
+
+// Helper function to convert time to seconds
+function clockToSeconds(clock) {
+    const [min, sec] = clock.split(':').map(Number);
+    return (min * 60) + sec;
+}
+
+// Helper function to compute the elapsed game time in seconds
+function computeGameTimeSeconds(period, gameClock) {
+    const regularPeriods = 4;
+    const quarterLength = 600;
+    const overtimeLength = 300;
+
+    const clockSeconds = clockToSeconds(gameClock);
+
+    let elapsed = 0;
+
+    if (period <= regularPeriods) {
+        elapsed += (period - 1) * quarterLength;
+        elapsed += (quarterLength - clockSeconds);
+    } else {
+        elapsed += regularPeriods * quarterLength;
+        elapsed += (period - regularPeriods - 1) * overtimeLength;
+        elapsed += (overtimeLength - clockSeconds);
+    }
+
+    return elapsed;
+}
+
+
 // Create a new game
 exports.createGame = async (req, res) => {
     try { 
@@ -317,6 +347,63 @@ exports.getGameById = async (req, res) => {
     }
 };
 
+
+// Fetch the specific roster for a game and sort by isOnCourt
+exports.getGameRoster = async (req, res) => {
+    try {
+        const gameId = req.params.gameId;
+        const game = await Game.findById(gameId).lean();
+        
+        if (!game) {
+            return res.status(404).json({ error: "Game not found" });
+        }
+
+        // Fetch all stats associated with this specific game
+        const stats = await GameStats.find({ gameId })
+            .populate('playerId') // Populates La Salle players from Player model
+            .lean();
+
+        // 1. Format Home Team (La Salle)
+        let homePlayers = stats
+            .filter(s => s.team === 'lasalle' && s.playerId)
+            .map(s => ({
+                playerId: s.playerId._id,
+                jerseyNumber: s.playerId.jerseyNumber,
+                // Adjust firstName/lastName below if your Player schema uses a different field for name
+                firstName: s.playerId.firstName,
+                lastName: s.playerId.lastName,
+                position: s.playerId.position,
+                profilePhoto: s.playerId.profilePhoto,
+                isOnCourt: s.isOnCourt || false
+            }));
+
+        // 2. Format Away Team (Opponent)
+        let awayPlayers = stats
+            .filter(s => s.team === 'opponent')
+            .map(s => {
+                // Find opponent details embedded in the Game document
+                const oppInfo = game.opponentPlayers.find(p => p.jerseyNumber === s.opponentPlayerIndex);
+                return {
+                    jerseyNumber: s.opponentPlayerIndex,
+                    fullName: oppInfo ? oppInfo.fullName : `Player ${s.opponentPlayerIndex}`,
+                    position: oppInfo ? oppInfo.position : null,
+                    isOnCourt: s.isOnCourt || false
+                };
+            });
+
+        // 3. Sort arrays: Players currently on the court go to the top
+        homePlayers.sort((a, b) => (b.isOnCourt === true) - (a.isOnCourt === true));
+        awayPlayers.sort((a, b) => (b.isOnCourt === true) - (a.isOnCourt === true));
+
+        res.json({ homePlayers, awayPlayers });
+
+    } catch (err) {
+        console.error("Error fetching game roster:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+
 // update a game status/period
 exports.updateGameStatus = async (req, res) => {
     try {
@@ -369,34 +456,6 @@ exports.updateGameStatus = async (req, res) => {
 
 
 
-
-// Helper function to convert time to seconds
-function clockToSeconds(clock) {
-    const [min, sec] = clock.split(':').map(Number);
-    return (min * 60) + sec;
-}
-
-// Helper function to compute the elapsed game time in seconds
-function computeGameTimeSeconds(period, gameClock) {
-    const regularPeriods = 4;
-    const quarterLength = 600;
-    const overtimeLength = 300;
-
-    const clockSeconds = clockToSeconds(gameClock);
-
-    let elapsed = 0;
-
-    if (period <= regularPeriods) {
-        elapsed += (period - 1) * quarterLength;
-        elapsed += (quarterLength - clockSeconds);
-    } else {
-        elapsed += regularPeriods * quarterLength;
-        elapsed += (period - regularPeriods - 1) * overtimeLength;
-        elapsed += (overtimeLength - clockSeconds);
-    }
-
-    return elapsed;
-}
 
 //  record a game event
 exports.recordGameEvent = async (req, res) => {
@@ -470,7 +529,7 @@ exports.undoLastEvent = async (req, res) => {
         const events = await GameEvent.find({ gameId: game._id, reversed: false })
             .sort('-createdAt').limit(50).populate('playerId', 'firstName lastName jerseyNumber').lean();
 
-        res.json({ game, stats, events });
+        res.json({ game, stats, events, lastEvent });
     } catch (err) {
         res.status(400).json({ error: err.message });
     }

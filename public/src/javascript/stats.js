@@ -41,20 +41,16 @@ $(document).ready(function () {
         }
 
         fetchGameDetails(); 
-
+        
         // Drag and drop players to sub
         new Sortable(document.getElementById('home-players-panel'), {
             animation: 150,
-            onEnd: function () {
-                syncOnCourtFromOrder('#home-players-panel');
-            }
+            // onEnd: function () { syncOnCourtFromOrder('#home-players-panel'); }
         });
         
         new Sortable(document.getElementById('opp-players-panel'), {
             animation: 150,
-            onEnd: function () {
-                syncOnCourtFromOrder('#opp-players-panel');
-            }
+            // onEnd: function () { syncOnCourtFromOrder('#opp-players-panel'); }
         });
     }
 
@@ -181,12 +177,12 @@ function startGame() {
 async function fetchGameDetails() {
     try {
         const gameRes = await $.get(`${API}/api/games/${gameId}`);
-        const playerRes = await $.get(`${API}/api/players/active`);
+        const playerRes = await $.get(`${API}/api/games/${gameId}/roster`);
 
         // Handle both {game: {}} and direct {} responses
         gameData = gameRes.game || gameRes;
-        opponentPlayers = gameData.opponentPlayers || [];
-        homePlayers = playerRes.players || [];
+        opponentPlayers = playerRes.awayPlayers || [];
+        homePlayers = playerRes.homePlayers || [];
         
         // Sync clock
         const syncedSeconds = mmssToSeconds(gameData.gameClock);
@@ -219,7 +215,7 @@ function renderHomePlayers() {
     let html = '';
     homePlayers.forEach((p, i) => {
         const isOnCourt = i < 5;
-        html += playerRowHTML(p._id, p.jerseyNumber, `${p.firstName} ${p.lastName}`, p.position, 'lasalle', isOnCourt, p.profilePhoto);
+        html += playerRowHTML(p.playerId, p.jerseyNumber, `${p.firstName} ${p.lastName}`, p.position, 'lasalle', p.isOnCourt || isOnCourt, p.profilePhoto);
     });
     $('#home-players-panel').html(html);
     
@@ -229,7 +225,7 @@ function renderOpponentPlayers() {
     let html = '';
     opponentPlayers.forEach((p, i) => {
         const isOnCourt = i < 5;
-        html += playerRowHTML(null, p.jerseyNumber, p.fullName, p.position || '', 'opponent', isOnCourt, null);
+        html += playerRowHTML(null, p.jerseyNumber, p.fullName, p.position || '', 'opponent', p.isOnCourt || isOnCourt, null);
     });
     $('#opp-players-panel').html(html);
 
@@ -267,24 +263,26 @@ function playerRowHTML(playerId, jersey, name, position, team, onCourt, photo) {
             <span data-key="${team}-${jersey}-ast">0</span> AST
         </div>
         <div class="d-flex gap-1 flex-wrap">
-            <button class="stat-btn score" onclick="recordStat(this,'shot made','2PT')">+2PT</button>
-            <button class="stat-btn score" onclick="recordStat(this,'shot made','3PT')">+3PT</button>
-            <button class="stat-btn score" onclick="recordStat(this,'free throw made','FT')">FT✓</button>
-            <button class="stat-btn negative" onclick="recordStat(this,'free throw missed','FT')">FT✗</button>
-            <button class="stat-btn" onclick="recordStat(this,'shot missed','2PT')">2PT✗</button>
-            <button class="stat-btn" onclick="recordStat(this,'shot missed','3PT')">3PT✗</button>
-            <button class="stat-btn" onclick="recordStat(this,'offensive rebound')">OREB</button>
-            <button class="stat-btn" onclick="recordStat(this,'defensive rebound')">DREB</button>
-            <button class="stat-btn assist" onclick="recordStat(this,'assist')">AST</button>
-            <button class="stat-btn assist" onclick="recordStat(this,'steal')">STL</button>
-            <button class="stat-btn assist" onclick="recordStat(this,'block')">BLK</button>
-            <button class="stat-btn negative" onclick="recordStat(this,'turnover')">TO</button>
-            <button class="stat-btn negative" onclick="recordStat(this,'foul')">FOUL</button>
+            <button class="stat-btn score" data-event="2PT shot made" onclick="recordStat(this,'shot made','2PT')">+2PT</button>
+            <button class="stat-btn score" data-event="3PT shot made" onclick="recordStat(this,'shot made','3PT')">+3PT</button>
+            <button class="stat-btn score ft-btn" data-event="free throw made" onclick="recordStat(this,'free throw made','FT')">FT✓</button>
+            <button class="stat-btn negative ft-btn" data-event="free throw missed" onclick="recordStat(this,'free throw missed','FT')">FT✗</button>
+            <button class="stat-btn" data-event="2PT shot missed" onclick="recordStat(this,'shot missed','2PT')">2PT✗</button>
+            <button class="stat-btn" data-event="3PT shot missed" onclick="recordStat(this,'shot missed','3PT')">3PT✗</button>
+            <button class="stat-btn" data-event="offensive rebound" onclick="recordStat(this,'offensive rebound')">OREB</button>
+            <button class="stat-btn" data-event="defensive rebound" onclick="recordStat(this,'defensive rebound')">DREB</button>
+            <button class="stat-btn assist" data-event="assist" onclick="recordStat(this,'assist')">AST</button>
+            <button class="stat-btn assist" data-event="steal" onclick="recordStat(this,'steal')">STL</button>
+            <button class="stat-btn assist" data-event="block" onclick="recordStat(this,'block')">BLK</button>
+            <button class="stat-btn negative" data-event="turnover" onclick="recordStat(this,'turnover')">TO</button>
+            <button class="stat-btn negative foul" data-event="foul">FOUL</button>
         </div>
     </div>`;
 }
 
 
+
+// Not in use at the moment
 function syncOnCourtFromOrder(selector) {
     const rows = $(selector).find('.player-row');
 
@@ -330,7 +328,8 @@ function updateControls() {
 
     // ===== STAT BUTTONS =====
     let isOnCourt;
-    $('.stat-btn').prop('disabled', !isRunning);
+   // Exclude FT buttons so they stay active when the clock pauses
+   $('.stat-btn').not('.ft-btn').prop('disabled', !isRunning);
 
     // Disable stat recording for players not on court
     $('.player-row').each(function () {
@@ -373,25 +372,36 @@ function updateControls() {
         $('.sub-btn').on('click', function () {
             toggleOnCourt(this);
         });
-        /*
-        const isFirstQuarter = period === 1;
-        const isequal10Min = clockSeconds === 600;
-
-        if (isFirstQuarter && isequal10Min) {
-            // Q1 under 10 min - ONLY toggle
-            $('.sub-btn').on('click', function () {
-                toggleOnCourt(this);
-            });
-        } else {
-            // Other cases - toggle + record stat
-            $('.sub-btn').on('click', function () {
-                toggleOnCourt(this);
-
-                recordStat(this, 'substitution');
-            });
-        }
-        */
     }
+
+    // handle foul button clicks
+    $('.stat-btn[data-event="foul"]').off('click').on('click', function () {
+        const btn = $(this);
+        // const playerRow = btn.closest('.player-row');
+
+        const now = Date.now();
+        const lastClick = debouncing[btn[0]] || 0;
+        // If less than 500 milliseconds (half a second) has passed since the last click...
+        if (now - lastClick < 500) return; // ...ignore this click and stop here!
+        
+        // Otherwise, record the exact time of this valid click
+        debouncing[btn[0]] = now;
+
+        const event = btn.data('event');
+
+        // --- FOUL & FREE THROW LOGIC ---
+        if (event === 'foul') {
+            // Pause the clock if it's currently running
+            if (isRunning) {
+                $('#ctrl-pause').click(); 
+            }
+
+            // Enable and highlight Free Throw buttons
+            $('.ft-btn').prop('disabled', false).removeClass('disabled');
+        }
+
+        recordStat(this, event);
+    });
     
 }
 
@@ -514,6 +524,42 @@ function undoLast() {
             updateScoreboard();
             updateAllPlayerStats();
             renderEvents(res.events);
+
+            const event = res.lastEvent;
+            
+            if (event && (event.eventType === 'sub_in' || event.eventType === 'sub_out')) {
+                let playerRow;
+                let teamClass = event.team === 'lasalle' ? 'on-court' : 'on-court-opp';
+
+                // Find the exact player row
+                if (event.team === 'lasalle') {
+                    playerRow = $(`#home-players-panel .player-row[data-player-id="${event.playerId}"]`);
+                } else {
+                    let jerseyNum = event.opponentPlayer ? event.opponentPlayer.jerseyNumber : event.opponentPlayerIndex;
+                    playerRow = $(`#opp-players-panel .player-row[data-jersey="${jerseyNum}"]`);
+                }
+
+                if (playerRow.length) {
+                    const container = playerRow.parent();
+
+                    // Reverse the visual state
+                    if (event.eventType === 'sub_in') {
+                        // Undoing a sub_in -> Take them OFF the court
+                        playerRow.data('oncourt', false);
+                        playerRow.removeClass(teamClass);
+                    } else if (event.eventType === 'sub_out') {
+                        // Undoing a sub_out -> Put them ON the court
+                        playerRow.data('oncourt', true);
+                        playerRow.addClass(teamClass);
+                    }
+
+                    // Push the active players back to the top
+                    if (typeof window.reorderPlayers === 'function') {
+                        reorderPlayers(container);
+                    }
+                }
+            }
+
         }
     });
 }
@@ -765,6 +811,9 @@ $('#ctrl-start').click(function () {
             startClock();
             $('#ctrl-start').addClass('d-none');
             $('#ctrl-pause').removeClass('d-none');
+
+            // --- Lock FT buttons on start ---
+            $('.ft-btn').prop('disabled', true).addClass('disabled');
         },
         error: function(err) {
             console.error("Failed to start/resume game:", err);
@@ -800,6 +849,9 @@ $('#ctrl-resume').click(function () {
             startClock();
             $('#ctrl-resume').addClass('d-none');
             $('#ctrl-pause').removeClass('d-none');
+
+            // --- Lock FT buttons on resume ---
+            $('.ft-btn').prop('disabled', true).addClass('disabled');
         }
     });
 });

@@ -52,7 +52,6 @@ const gameStatsSchema = new mongoose.Schema({
         type: Number, 
         default: null 
     },
-
     team: { 
         type: String, 
         enum: ['lasalle', 'opponent'], 

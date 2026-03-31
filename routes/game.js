@@ -14,6 +14,7 @@ router.post('/create', authorize('Coach', 'Statistician'), gameController.create
 router.get('/all-games', authorize('Coach', 'Statistician'), gameController.getGames);
 
 
+
 // Get game by date range
 router.get('/date-range', authorize('Coach', 'Statistician'), gameController.getGamesByDateRange);
 
@@ -35,6 +36,9 @@ router.get('/:gameId', authorize('Coach', 'Statistician'), gameController.getGam
 
 // PATCH update a game status/period
 router.patch('/:gameId', authorize('Coach', 'Statistician'), gameController.updateGameStatus);
+
+// GET the specific roster for a game and sort by isOnCourt
+router.get('/:gameId/roster',  authorize('Coach', 'Statistician'), gameController.getGameRoster);
 
 // POST record event
 router.post('/:gameId/events', authorize('Coach', 'Statistician'), gameController.recordGameEvent);
