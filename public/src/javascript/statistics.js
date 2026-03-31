@@ -82,7 +82,7 @@ function loadInsights(gameId) {
             return;
         }
 
-        $('#insights-box').html(data.replace(/\n/g, "<br>"));
+        $('#insights-box').html(formatInsights(data));
 
     }).fail(function (err) {
         console.error("Insights error:", err);
@@ -90,6 +90,56 @@ function loadInsights(gameId) {
     });
 }
 
+// helper to improve insights UI display
+function formatInsights(text) {
+    let html = "";
+
+    // Split sections
+    const sections = text.split(/\d+\.\s/).filter(s => s.trim() !== "");
+
+    sections.forEach(section => {
+
+        let title = section.split("\n")[0];
+        let content = section.replace(title, "");
+
+        const lower = title.toLowerCase();
+
+        if (lower.includes("key insights")) {
+            html += createCard("Key Insights", content);
+        } 
+        if (lower.includes("strengths")) {
+            html += createCard("Strengths & Weaknesses", content);
+        } 
+        if (lower.includes("tactical")) {
+            html += createCard("Tactical Suggestions", content);
+        }
+        if (lower.includes("win")) {
+            html += createCard("Win Probability", content);
+        }
+    });
+
+    return html;
+}
+
+// helper to improve insights UI display
+function createCard(title, content) {
+    content = content
+        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+        .replace(/^\* (.*)$/gm, "<li>$1</li>")
+        .replace(/(<li>.*<\/li>)/gs, "<ul>$1</ul>")
+        .replace(/\n/g, "<br>");
+
+    return `
+        <div class="insight-card mb-3">
+            <h6 class="fw-bold text-success">${title}</h6>
+            <div class="text-muted small">
+                ${content}
+            </div>
+        </div>
+    `;
+}
+
+// render player stats table
 function renderTable(stats) {
     let html = '';
 
@@ -200,7 +250,7 @@ function renderCharts(home, opp) {
 }
 
 
-// defunct**
+// defunct function**
 function generateInsights(home, opp) {
 
     let insights = [];

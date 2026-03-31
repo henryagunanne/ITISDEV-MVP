@@ -4,10 +4,12 @@ const GameEvent = require('../models/GameEvents');
 const GameStats = require('../models/GameStats');
 const Player = require('../models/Player');
 
-const OpenAI = require("openai");
-const openai = new OpenAI({ 
-    apiKey: process.env.OPENAI_API_KEY 
-});
+// const OpenAI = require("openai");
+// const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Helper: get period key from period number 
 function periodKey(period) {
@@ -438,7 +440,7 @@ exports.generateInsights = async (req, res) => {
             totalOppScore += g.opponentScore;
         });
 
-        const gamesCount = pastGames.length;
+        const gamesCount = pastGames.length || 1;
 
         const avgMargin = gamesCount ? (totalMargin / gamesCount).toFixed(1) : 0;
         const avgTeamScore = gamesCount ? (totalTeamScore / gamesCount).toFixed(1) : 0;
@@ -498,10 +500,21 @@ exports.generateInsights = async (req, res) => {
         const prompt = `
             You are a basketball analytics assistant.
 
-            Analyze the game and provide:
-            1. Key insights (why a team is winning/losing)
-            2. Strengths and weaknesses
-            3. Tactical suggestions
+            Format your response EXACTLY like this:
+
+            1. KEY INSIGHTS
+            - insight 1
+            - insight 2
+            - insight 3
+
+            2. STRENGTHS & WEAKNESSES
+            - strengths...
+            - weaknesses...
+
+            3. TACTICAL SUGGESTIONS
+            - suggestion 1
+            - suggestion 2
+            - suggestion 3...
 
             If the game is LIVE (i.e. the game status is neither ENDED nor NOT_STARTED), also include:
             4. Win probability (%) for each team
@@ -510,16 +523,23 @@ exports.generateInsights = async (req, res) => {
         `;
 
         // LLM Call
-        const response = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
-            messages: [
-                { role: "system", content: prompt },
-                { role: "user", content: fullContext }
-            ],
-            temperature: 0.7
+        const model = genAI.getGenerativeModel({
+            model: "gemini-2.5-flash"
         });
-
-        const insights = response.choices[0].message.content;
+        
+        const result = await model.generateContent(`
+            ${prompt}
+            
+            DATA:
+            ${fullContext}
+            
+            IMPORTANT:
+            - Be concise
+            - Use bullet points
+            - Do NOT repeat raw stats
+        `);
+        
+        const insights = result.response.text();
 
         res.json({
             gameId,

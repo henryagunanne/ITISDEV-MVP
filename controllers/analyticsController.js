@@ -2,12 +2,12 @@ const mongoose = require('mongoose');
 const Game = require('../models/Game');
 const GameStats = require('../models/GameStats');
 const Player = require("../models/Player");
-const OpenAI = require("openai");
+// const OpenAI = require("openai");
+//const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // This endpoint generates a full box score for a specific game, including player stats.
 exports.getGameBoxScore = async (req, res) => {
@@ -1505,21 +1505,30 @@ exports.getAIInsights = async (req, res) => {
         ).join("\n")}
         `;
     
-        // 3. GENERATE INSIGHT
+        // 3. GENERATE INSIGHT USING LLM
+        const model = genAI.getGenerativeModel({
+            model: "gemini-2.5-flash"
+        });
+        
         let insights = "";
+        
         try {
-            const aiResponse = await openai.chat.completions.create({
-                model: "gpt-4o-mini",
-                messages: [
-                { role: "system", content: "You are a basketball analyst." },
-                { role: "user", content: `Give insights and recommendations:\n${context}` }
-                ]
-            });
-
-            insights = aiResponse.choices[0].message.content;
+            const result = await model.generateContent(`
+                You are a basketball analyst.
+                
+                Analyze the season data and provide:
+                - Team performance insights
+                - Key player observations
+                - Recommendations
+                
+                DATA:
+                ${context}
+            `);
+        
+            insights = result.response.text();
+        
         } catch (aiError) {
-            console.error("AI failed:", aiError.message);
-
+            console.error("Gemini failed:", aiError.message);
             insights = generateFallbackInsights(summary, players);
         }
 

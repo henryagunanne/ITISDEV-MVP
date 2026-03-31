@@ -221,5 +221,40 @@ async function loadInsights() {
   const res = await fetch(`/api/analytics/insights?${query}`);
   const data = await res.json();
 
-  document.getElementById("aiInsights").innerText = data.insights;
+  document.getElementById("aiInsights").innerHTML = formatReport(data.insights);
+}
+
+
+function formatReport(text) {
+
+  const sections = text.split(/\d+\.\s/).filter(s => s.trim() !== "");
+
+  let html = "";
+
+  sections.forEach(section => {
+
+    let title = section.split("\n")[0].replace(":", "");
+    let content = section.replace(section.split("\n")[0], "");
+
+    content = content
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/^\* (.*)$/gm, '<li>$1</li>')
+      .replace(/(<li>.*<\/li>)/gs, '<ul class="mb-2">$1</ul>')
+      .replace(/\n/g, '<br>');
+
+    html += `
+      <div class="card insight-card mb-3 border-0">
+        <div class="card-body">
+          <h6 class="fw-bold text-success">
+            ${title}
+          </h6>
+          <div class="small text-muted">
+            ${content}
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  return html;
 }
