@@ -1,5 +1,5 @@
 /* Handles the interactivity logic of the live game statistics input module
-*/ 
+*/
 
 const API = '';
 let gameId = null;
@@ -12,7 +12,7 @@ let clockSeconds = 600; // 10 min quarters
 // Game Clock States
 let isRunning = false;
 let isMasterClock = false;
-
+let lastClockTick = Date.now();
 
 let debouncing = {};
 let quarter = null;
@@ -267,6 +267,9 @@ async function fetchGameDetails() {
 
         initGameUI();
         updateControls();
+
+        // Ask other open connections for the current UI layout!
+        socket.emit('request_ui_sync', gameId);
     } catch (err) {
         console.error("Failed to fetch game details:", err);
     }
@@ -385,6 +388,7 @@ function syncOnCourtFromOrder(selector) {
 function updateControls() {
     const period = gameData?.currentPeriod || 0;
     const status = gameData?.status || 'PLAYING';
+    console.log(period);
 
     if (status == 'ENDED') {
         $('#game-controls').html('<span class="badge bg-danger">FINAL</span>');
@@ -402,6 +406,7 @@ function updateControls() {
     }
     
     if (period != 0) quarter = period;
+    console.log(quarter);
 
     // ===== STAT BUTTONS =====
     let isOnCourt;
@@ -619,29 +624,31 @@ function reverseSubstitutionUI(deletedEvent) {
     const playerId = deletedEvent.playerId;
     const opponentPlayer = deletedEvent.opponentPlayer;
 
-    let playerRow;
+    // Determine the exact HTML ID based on which team the event belonged to
+    const rowId = team === 'lasalle' ? `player-${playerId}` : `opp-player-${opponentPlayer.jerseyNumber}`;
 
-    if (team === 'lasalle') {
-        playerRow = $(`#home-players-panel .player-row[data-player-id="${playerId}"]`);
-    } else {
-        playerRow = $(`#opp-players-panel .player-row[data-jersey="${opponentPlayer.jerseyNumber}"]`);
-    }
+    // Find the physical HTML row
+    const targetRow = $(`#${rowId}`);
 
-    if (playerRow.length) {
-        const container = playerRow.parent();
-        const isOnCourt = playerRow.data('oncourt');
+
+    if (targetRow.length) {
+        const container = targetRow.parent();
+        const isOnCourt = targetRow.data('oncourt');
+        const eventType = deletedEvent.eventType;
 
         // Reverse the visual state
-        if (isOnCourt) {
-            playerRow.data('oncourt', false);
-            playerRow.removeClass(team === 'lasalle' ? 'on-court' : 'on-court-opp');
-        } else {
-            playerRow.data('oncourt', true);
-            playerRow.addClass(team === 'lasalle' ? 'on-court' : 'on-court-opp');
+        if (eventType === 'sub_in' &&isOnCourt) {
+            targetRow.data('oncourt', false);
+            targetRow.removeClass(team === 'lasalle' ? 'on-court' : 'on-court-opp');
+            reorderPlayers(container);  // Push the active players back to the top
+            
+        } else if (eventType === 'sub_out' && !isOnCourt) {
+            targetRow.data('oncourt', true);
+            targetRow.addClass(team === 'lasalle' ? 'on-court' : 'on-court-opp');
+            reorderPlayers(container);  // Push the active players back to the top
         }
-
-        // Push the active players back to the top
-        reorderPlayers(container);
+        
+        // reorderPlayers(container);
     }
 }
 
@@ -790,9 +797,15 @@ function renderEvents(events) {
 // function to load the latest stats from the server and update the UI accordingly
 function loadStats() {
     $.get(`${API}/api/games/${gameId}/stats`, function (res) {
-        if (!res.stats || !Array.isArray(res.stats)) return;
+        const fetchedStats = res.stats || res;
 
-        allStats = res.stats 
+        // Safely check against the new fallback variable
+        if (!Array.isArray(fetchedStats)) {
+            console.warn("Could not load stats array:", res);
+            return; 
+        }
+
+        allStats = fetchedStats;
         updateAllPlayerStats();
     });
 }
@@ -800,7 +813,8 @@ function loadStats() {
 // function to load the latest events from the server and update the play-by-play feed accordingly
 function loadEvents() {
     $.get(`${API}/api/games/${gameId}/events`, function (res) {
-        renderEvents(res.events);
+        const fetchedEvents = res.events || res;
+        renderEvents(fetchedEvents);
     });
 }
 
@@ -849,6 +863,9 @@ function formatClock(s) {
 
 // helper to update the clock display based on the current clockSeconds value
 function updateClockDisplay() {
+    // Reset the watchdog timer every time the clock moves
+    lastClockTick = Date.now();
+
     $('#hdr-clock').text(formatClock(clockSeconds));
 }
 
@@ -1096,13 +1113,32 @@ setInterval(async function () {
 
 // Sync clock to viewers via WebSockets
 setInterval(function () {
-    if (gameId && isRunning && isMasterClock) {
-        // Emit the current time to the server every second
-        socket.emit('sync_clock', { 
-            gameId: gameId, 
-            gameClock: formatClock(clockSeconds), 
-            clockSeconds: clockSeconds 
-        });
+    // Only do these checks if the game is actually unpaused
+    if (gameId && isRunning) {
+        
+        if (isMasterClock) {
+            // MASTER MODE: Broadcast the current time to everyone else
+            socket.emit('sync_clock', { 
+                gameId: gameId, 
+                gameClock: formatClock(clockSeconds), 
+                clockSeconds: clockSeconds 
+            });
+            
+        } else {
+            // VIEWER MODE: Run the Self-Healing Watchdog
+            const timeSinceLastTick = Date.now() - lastClockTick;
+            
+            // If it has been more than 2.5 seconds since we heard from the Master...
+            if (timeSinceLastTick > 2500) {
+                console.warn("Master connection lost! Taking over as Master...");
+                
+                // Promote this connection to Master
+                isMasterClock = true;
+                
+                // Restart the local countdown interval
+                if (typeof startClock === 'function') startClock(); 
+            }
+        }
     }
 }, 1000); // Ticks every 1 second instead of a delayed interval
 
@@ -1113,6 +1149,9 @@ setInterval(function () {
 socket.on('clock_updated', (data) => {
     // If this screen IS NOT running the clock (e.g., an assistant coach's tablet), update the UI
     if (!isMasterClock) {
+        // Reset the watchdog timer because the Master is alive!
+        lastClockTick = Date.now();
+
         clockSeconds = data.clockSeconds;
         $('#hdr-clock').text(data.gameClock);
     }
@@ -1247,6 +1286,116 @@ socket.on('on_court_toggled', (data) => {
         // Pass FALSE so it doesn't bounce back or hit the DB!
         if (typeof toggleOnCourt === 'function') {
             toggleOnCourt(targetRow[0], false);
+        }
+    }
+});
+
+
+// -- ACTIVE CONNECTION: Hears a request and reads its screen --
+socket.on('request_ui_sync', () => {
+    // If this connection hasn't loaded players yet, ignore the request
+    if ($('.player-row').length === 0) return;
+
+    // Take a snapshot of the exact HTML IDs and their current order
+    const homeOrder = $('#home-players-panel').children('.player-row').map((i, el) => el.id).get();
+    const oppOrder = $('#opp-players-panel').children('.player-row').map((i, el) => el.id).get();
+    
+    // Find every HTML ID that currently has the on-court status
+    const onCourtIds = $('.player-row').filter(function() { 
+        return $(this).data('oncourt') === true; 
+    }).map((i, el) => el.id).get();
+
+    // Send the snapshot back to the room
+    socket.emit('send_ui_sync', {
+        gameId: gameId,
+        homeOrder: homeOrder,
+        oppOrder: oppOrder,
+        onCourtIds: onCourtIds,
+        isRunning: isRunning,
+        clockSeconds: clockSeconds
+    });
+});
+
+
+// RELOADED CONNECTION: Receives the snapshot and applies it --
+socket.on('receive_ui_sync', (data) => {
+    console.log("Hydrating UI layout from another active connection...");
+
+    // Reorder the Home Panel
+    const homePanel = document.getElementById('home-players-panel');
+    if (homePanel && data.homeOrder) {
+        data.homeOrder.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) homePanel.appendChild(el); 
+        });
+    }
+
+    // Reorder the Opponent Panel
+    const oppPanel = document.getElementById('opp-players-panel');
+    if (oppPanel && data.oppOrder) {
+        data.oppOrder.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) oppPanel.appendChild(el);
+        });
+    }
+
+    // Apply On-Court visual statuses
+    if (data.onCourtIds) {
+        // Reset everyone to the bench first to guarantee a clean slate
+        $('.player-row').data('oncourt', false).removeClass('on-court on-court-opp');
+        
+        // Loop through the snapshot and put the right people back on the court
+        data.onCourtIds.forEach(id => {
+            const row = $(`#${id}`);
+            if (row.length) {
+                const team = row.data('team');
+                row.data('oncourt', true);
+                row.addClass(team === 'lasalle' ? 'on-court' : 'on-court-opp');
+            }
+        });
+    }
+
+    // Hydrate Control & Clock State
+    if (data.isRunning !== undefined) {
+        isRunning = data.isRunning;
+        clockSeconds = data.clockSeconds;
+        
+        // Force the physical numbers on the clock to match the active connection exactly
+        if (typeof updateClockDisplay === 'function') updateClockDisplay();
+        
+        // 2. Lock/Unlock the appropriate UI buttons based on the synced state
+        if (isRunning) {
+            // Because another admin is running the clock, this reloaded page is a VIEWER
+            isMasterClock = false; 
+            
+            // Replicate the 'start' action UI
+            $('#ctrl-start, #ctrl-resume').addClass('d-none');
+            $('#ctrl-pause').removeClass('d-none');
+            $('.ft-btn').prop('disabled', true).addClass('disabled');
+            
+        } else {
+            // Clock is paused. Show Resume instead of Start if time has elapsed
+            $('#ctrl-pause').addClass('d-none');
+            
+            // Find out what a "full clock" means for the current period
+            const isOvertime = (quarter > 4); 
+            const fullPeriodSeconds = isOvertime ? 300 : 600;
+
+            // If the clock is completely full for this specific period, show Start
+            if (clockSeconds === fullPeriodSeconds) {
+                $('#ctrl-start').removeClass('d-none');
+                $('#ctrl-resume').addClass('d-none');
+            } 
+            // If it's anything less than full, show Resume
+            else if (clockSeconds < fullPeriodSeconds && clockSeconds > 0) {
+                $('#ctrl-start').addClass('d-none');
+                $('#ctrl-resume').removeClass('d-none');
+            }
+        }
+        
+        // Refresh your main controls helper if you have one
+        if (typeof updateControls === 'function') {
+            updateControls();
         }
     }
 });

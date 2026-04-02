@@ -81,7 +81,20 @@ io.on('connection', (socket) => {
             rowId: data.rowId
         });
     });
-    
+
+
+    // When a reloaded client asks for the current UI state
+    socket.on('request_ui_sync', (gameId) => {
+        // Relay the request to everyone ELSE in the game room
+        socket.to(gameId).emit('request_ui_sync');
+    });
+
+    // When an active client replies with their UI snapshot
+    socket.on('send_ui_sync', (data) => {
+        // Broadcast the snapshot to everyone ELSE in the game room
+        socket.to(data.gameId).emit('receive_ui_sync', data);
+    });
+
 
     socket.on('leave_game', (gameId) => { 
         socket.leave(gameId); 

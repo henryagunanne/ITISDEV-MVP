@@ -372,7 +372,6 @@ exports.getGameRoster = async (req, res) => {
             .map(s => ({
                 playerId: s.playerId._id,
                 jerseyNumber: s.playerId.jerseyNumber,
-                // Adjust firstName/lastName below if your Player schema uses a different field for name
                 firstName: s.playerId.firstName,
                 lastName: s.playerId.lastName,
                 position: s.playerId.position,
@@ -767,7 +766,7 @@ exports.generateInsights = async (req, res) => {
                 "keyInsights": ["insight 1", "insight 2", "insight 3"],
                 "strengthsAndWeaknesses": ["point 1", "point 2"],
                 "tacticalSuggestions": ["suggestion 1", "suggestion 2"],
-                "winProbability": ["Estimated Win Probability (La Salle): 55%", "Estimated Win Probability (${game.opponent}): 55%"] // Optional: Only include if the game status is not ENDED or NOT_STARTED
+                "winProbability": ["Estimated Win Probability (La Salle): 55%", "Estimated Win Probability (${game.opponent}): 45%"] // Optional: Only include if the game status is not ENDED or NOT_STARTED
             }
         `;
 
