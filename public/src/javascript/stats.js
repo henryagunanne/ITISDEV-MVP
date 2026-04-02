@@ -312,11 +312,12 @@ function playerRowHTML(playerId, jersey, name, position, team, onCourt, photo) {
     const dataJersey = `data-jersey="${jersey}"`;
     const dataName = `data-name="${name}"`;
     const dataTeam = `data-team="${team}"`;
+    const rowId = team === 'lasalle' ? `player-${playerId}` : `opp-player-${jersey}`;
     const avatarSrc = photo && photo !== '/uploads/players/default.png' ? photo : '';
     const avatarHTML = avatarSrc ? `<img src="${avatarSrc}" class="rounded-circle me-1" width="24" height="24">` : '';
 
     return `
-    <div id="player-${playerId}" class="player-row ${courtClass}" ${dataId} ${dataJersey} ${dataName} ${dataTeam} data-oncourt="${onCourt}">
+    <div id="${rowId}" class="player-row ${courtClass}" ${dataId} ${dataJersey} ${dataName} ${dataTeam} data-oncourt="${onCourt}">
         <div class="d-flex justify-content-between align-items-center mb-1">
             <div class="d-flex align-items-center gap-1">
                 ${avatarHTML}
@@ -644,6 +645,7 @@ function reverseSubstitutionUI(deletedEvent) {
     }
 }
 
+// function to undo the last recorded event
 function undoLast() {
     if (!gameId) return;
     $.ajax({
@@ -659,36 +661,7 @@ function undoLast() {
             const event = res.lastEvent;
             
             if (event && (event.eventType === 'sub_in' || event.eventType === 'sub_out')) {
-                let playerRow;
-                let teamClass = event.team === 'lasalle' ? 'on-court' : 'on-court-opp';
-
-                // Find the exact player row
-                if (event.team === 'lasalle') {
-                    playerRow = $(`#home-players-panel .player-row[data-player-id="${event.playerId}"]`);
-                } else {
-                    let jerseyNum = event.opponentPlayer ? event.opponentPlayer.jerseyNumber : event.opponentPlayerIndex;
-                    playerRow = $(`#opp-players-panel .player-row[data-jersey="${jerseyNum}"]`);
-                }
-
-                if (playerRow.length) {
-                    const container = playerRow.parent();
-
-                    // Reverse the visual state
-                    if (event.eventType === 'sub_in') {
-                        // Undoing a sub_in -> Take them OFF the court
-                        playerRow.data('oncourt', false);
-                        playerRow.removeClass(teamClass);
-                    } else if (event.eventType === 'sub_out') {
-                        // Undoing a sub_out -> Put them ON the court
-                        playerRow.data('oncourt', true);
-                        playerRow.addClass(teamClass);
-                    }
-
-                    // Push the active players back to the top
-                    if (typeof window.reorderPlayers === 'function') {
-                        reorderPlayers(container);
-                    }
-                }
+                reverseSubstitutionUI(event);
             }
 
         }
@@ -710,11 +683,13 @@ function updateScoreboard() {
     $('#opp-total-pts').text((gameData.opponentScore || 0) + ' PTS');
 }
 
+// function to convert period number to label (Q1, Q2, Q3, Q4, OT1, OT2, etc.)
 function periodLabel(p) {
     if (p <= 4) return 'Q' + p;
     return 'OT' + (p - 4);
 }
 
+// function to update all player stat boxes based on the latest stats data
 function updateAllPlayerStats() {
     // Reset display
     const homeAgg = { pts: 0, fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0, oreb: 0, dreb: 0, ast: 0, stl: 0, blk: 0, to: 0, fouls: 0 };
@@ -754,6 +729,8 @@ function updateAllPlayerStats() {
     renderTeamStats('#opp-team-stats', oppAgg);
 }
 
+
+// Helper to render the team stats boxes based on aggregated stats
 function renderTeamStats(selector, a) {
     const pct = (m, att) => att === 0 ? '0.0' : ((m / att) * 100).toFixed(1);
     const fgm = a.fgm + a.tpm;
@@ -776,6 +753,8 @@ function renderTeamStats(selector, a) {
     $(selector).html(html);
 }
 
+
+// Helper to render the play-by-play feed based on the latest events data
 function renderEvents(events) {
     let html = '';
     if (!events || events.length === 0) {
@@ -807,6 +786,8 @@ function renderEvents(events) {
     $('#pbp-feed').html(html);
 }
 
+
+// function to load the latest stats from the server and update the UI accordingly
 function loadStats() {
     $.get(`${API}/api/games/${gameId}/stats`, function (res) {
         if (!res.stats || !Array.isArray(res.stats)) return;
@@ -816,6 +797,7 @@ function loadStats() {
     });
 }
 
+// function to load the latest events from the server and update the play-by-play feed accordingly
 function loadEvents() {
     $.get(`${API}/api/games/${gameId}/events`, function (res) {
         renderEvents(res.events);
@@ -827,7 +809,7 @@ function loadEvents() {
 
 // helper to convert string time to number
 function mmssToSeconds(str) {
-    // 1. Force to string and trim whitespace
+    // Force to string and trim whitespace
     if (typeof str !== 'string') {
         console.error("Input is not a string:", str);
         return NaN;
@@ -836,7 +818,7 @@ function mmssToSeconds(str) {
     const cleanStr = str.trim();
     if (!cleanStr) return NaN;
 
-    // 2. Split and clean each individual part
+    // Split and clean each individual part
     const parts = cleanStr.split(':').map(p => p.trim());
     
     if (parts.length !== 2) {
@@ -844,7 +826,7 @@ function mmssToSeconds(str) {
         return NaN;
     }
 
-    // 3. Parse using parseFloat to handle potential decimals (like 12.5s)
+    // Parse using parseFloat to handle potential decimals (like 12.5s)
     const minutes = parseFloat(parts[0]);
     const seconds = parseFloat(parts[1]);
 
@@ -852,17 +834,20 @@ function mmssToSeconds(str) {
         return NaN;
     }
 
-    // 4. Final calculation (using Math.floor if you want whole seconds)
+    // Final calculation (using Math.floor if you want whole seconds)
     return Math.floor((minutes * 60) + seconds);
 }
 
 
+// helper to convert seconds back to MM:SS format
 function formatClock(s) {
     const m = Math.floor(s / 60);
     const sec = s % 60;
     return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }
 
+
+// helper to update the clock display based on the current clockSeconds value
 function updateClockDisplay() {
     $('#hdr-clock').text(formatClock(clockSeconds));
 }
@@ -898,7 +883,6 @@ function stopClock() {
 // Game controls
 $('#ctrl-start').click(function () {
     const period = gameData?.currentPeriod || 0;
-    console.log(gameData);
 
     const isFirstQuarter = period === 1;
     const isEqual10Min = clockSeconds === 600;  // 10:00
@@ -1169,36 +1153,7 @@ socket.on('event_undone', (data) => {
     const event = data.lastEvent;
 
     if (event && (event.eventType === 'sub_in' || event.eventType === 'sub_out')) {
-        let playerRow;
-        let teamClass = event.team === 'lasalle' ? 'on-court' : 'on-court-opp';
-
-        // Find the exact player row
-        if (event.team === 'lasalle') {
-            playerRow = $(`#home-players-panel .player-row[data-player-id="${event.playerId}"]`);
-        } else {
-            let jerseyNum = event.opponentPlayer ? event.opponentPlayer.jerseyNumber : event.opponentPlayerIndex;
-            playerRow = $(`#opp-players-panel .player-row[data-jersey="${jerseyNum}"]`);
-        }
-
-        if (playerRow.length) {
-            const container = playerRow.parent();
-
-            // Reverse the visual state
-            if (event.eventType === 'sub_in') {
-                // Undoing a sub_in -> Take them OFF the court
-                playerRow.data('oncourt', false);
-                playerRow.removeClass(teamClass);
-            } else if (event.eventType === 'sub_out') {
-                // Undoing a sub_out -> Put them ON the court
-                playerRow.data('oncourt', true);
-                playerRow.addClass(teamClass);
-            }
-
-            // Push the active players back to the top
-            if (typeof window.reorderPlayers === 'function') {
-                reorderPlayers(container);
-            }
-        }
+        reverseSubstitutionUI(event);
     }
 });
 
