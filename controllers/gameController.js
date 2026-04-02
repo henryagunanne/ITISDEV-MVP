@@ -2,7 +2,7 @@ const Game = require("../models/Game");
 const Tournament = require('../models/Tournament');
 const GameEvent = require('../models/GameEvents');
 const GameStats = require('../models/GameStats');
-const Player = require('../models/Player');
+// const Player = require('../models/Player');
 
 // const OpenAI = require("openai");
 // const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -449,8 +449,21 @@ exports.updateGameStatus = async (req, res) => {
                 );
             }
         }
+        
 
         const updatedGame = await game.save();
+
+        // Get the WebSocket instance attached to the app
+        const io = req.app.get('io');
+
+        // Broadcast status update to clients in the game room
+        io.to(req.params.gameId).emit('game_status_updated', {
+            currentPeriod: updatedGame.currentPeriod,
+            gameClock: updatedGame.gameClock,
+            status: updatedGame.status,
+            updatedGame: updatedGame
+        });
+
         res.json(updatedGame);
     } catch (err) {
         res.status(400).json({ error: err.message });
@@ -507,6 +520,20 @@ exports.recordGameEvent = async (req, res) => {
         const events = await GameEvent.find({ gameId: game._id, reversed: false })
             .sort('-createdAt').limit(50).populate('playerId', 'firstName lastName jerseyNumber').lean();
 
+
+        // Get the WebSocket instance attached to the app
+        const io = req.app.get('io');
+
+        // Broadcast to EVERYONE in the game's room that the data changed
+        io.to(req.params.gameId).emit('stat_recorded', {
+            message: "New play recorded",
+            // send the specific event back so clients don't have to re-fetch
+            events: events,
+            // Optionally send updated stats or game info if needed
+            updatedStats: stats,
+            updatedGame: updatedGame
+        });
+
         res.json({ game: updatedGame, stats, events });
 
     } catch (err) {
@@ -532,6 +559,19 @@ exports.undoLastEvent = async (req, res) => {
         const events = await GameEvent.find({ gameId: game._id, reversed: false })
             .sort('-createdAt').limit(50).populate('playerId', 'firstName lastName jerseyNumber').lean();
 
+
+        // Get the WebSocket instance attached to the app
+        const io = req.app.get('io');
+
+        // Broadcast to clients that an event was undone\
+        io.to(req.params.gameId).emit('event_undone', {
+            message: "Last event undone",
+            events: events,
+            updatedStats: stats,
+            updatedGame: game,
+            lastEvent: lastEvent
+        });
+
         res.json({ game, stats, events, lastEvent });
     } catch (err) {
         res.status(400).json({ error: err.message });
@@ -556,6 +596,20 @@ exports.addOvertime = async (req, res) => {
         game.markModified('quarterScores');
 
         await game.save();
+
+
+        // Get the WebSocket instance attached to the app
+        const io = req.app.get('io');
+
+        // Broadcast to clients that a new overtime period was added
+        io.to(req.params.gameId).emit('overtime_added', {
+            message: "Overtime period added",
+            currentPeriod: game.currentPeriod,
+            gameClock: game.gameClock,
+            quarterScores: game.quarterScores,
+            gameStatus: game.status,
+            game: game
+        });
         res.json(game);
     } catch (err) {
         res.status(400).json({ error: err.message });

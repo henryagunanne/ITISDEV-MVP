@@ -7,15 +7,26 @@ const API = '';
 let selectedGameId = null;
 let stat;
 let teamChart, shootingChart;
+let insightsTimer = null;
+
+const socket = io(); // Initialize socket for the analytics viewer
 
 // Load games into dropdown
 $(document).ready(function () {
     loadGames();
 
     $('#game-select').change(function () {
+        // If we were already listening to another game, leave that room first
+        if (selectedGameId) {
+            socket.emit('leave_game', selectedGameId); // You'll need to add this to server.js
+        }
+
         selectedGameId = $(this).val();
         stat = $(this).find(':selected').data('status');
         if (selectedGameId) {
+            // Join the new game's room
+            socket.emit('join_game', selectedGameId);
+
             loadStats(selectedGameId);
             loadInsights(selectedGameId);
         }
@@ -40,6 +51,60 @@ $(document).ready(function () {
         window.location.href = `/admin/start-game`;
     });
 
+});
+
+// LISTEN FOR LIVE UPDATES
+socket.on('stat_recorded', () => {
+    console.log("Live stat recorded! Refreshing charts...");
+    
+    // Automatically re-fetch the data and redraw the charts
+    if (selectedGameId) {
+        // Instantly reload the numerical stats and charts (cheap & fast)
+        loadStats(selectedGameId);
+
+        // Debounce the AI Insights (expensive & slow)
+        // Clear the existing timer if a new stat comes in before the timer finishes
+        if (insightsTimer) {
+            clearTimeout(insightsTimer);
+        }
+
+        // Optional: Show a "generating" indicator on the UI so the user knows it's updating
+        $('#insights-box').html('<div class="spinner-border text-success" role="status"><span class="visually-hidden">Loading...</span></div> <span class="text-muted small">Updating insights...</span>');
+
+        // Set a new timer. It will only execute if 15 seconds pass WITHOUT another stat being recorded.
+        insightsTimer = setTimeout(() => {
+            console.log("Play settled. Fetching new AI Insights...");
+            loadInsights(selectedGameId);
+        }, 15000); // 15,000 milliseconds = 15 seconds
+         
+    }
+});
+
+/*
+// Listen for the live clock updates
+socket.on('clock_updated', (data) => {
+    $('#analytics-game-clock').text(data.gameClock); // If there is a clock UI on the analytics page, update it
+});
+*/
+
+socket.on('event_undone', () => {
+    console.log("An event was undone. Refreshing stats and insights...");
+    if (selectedGameId) {
+        loadStats(selectedGameId);
+       
+        if (insightsTimer) {
+            clearTimeout(insightsTimer);
+        }
+
+        // Optional: Show a "generating" indicator on the UI so the user knows it's updating
+        $('#insights-box').html('<div class="spinner-border text-success" role="status"><span class="visually-hidden">Loading...</span></div> <span class="text-muted small">Updating insights...</span>');
+
+        // Set a new timer. It will only execute if 15 seconds pass WITHOUT another stat being recorded.
+        insightsTimer = setTimeout(() => {
+            console.log("Play settled. Fetching new AI Insights...");
+            loadInsights(selectedGameId);
+        }, 15000); // 15,000 milliseconds = 15 seconds
+    }
 });
 
 
@@ -72,8 +137,6 @@ function loadStats(gameId) {
 // Load AI generated game insights
 function loadInsights(gameId) {
     $.get(`/api/games/${gameId}/insights`, function (res) {
-        
-        console.log("INSIGHTS RESPONSE:", res); // DEBUG
 
         const data = res.insights;
 

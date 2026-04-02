@@ -4,7 +4,7 @@ const isAuthenticated = (req, res, next) => {
         return next();
     }
 
-    if (!req.session.user.isActive) {
+    if (req.session.user.isActive === false) {
         return res.status(403).render('error/access-denied', {
             layout: 'error',
             title: 'Account Disabled',
