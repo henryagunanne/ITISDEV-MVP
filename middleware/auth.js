@@ -1,9 +1,28 @@
 // Authentication middleware
 const isAuthenticated = (req, res, next) => {
-    if (req.session.user) {
-        return next();
+    // If there is NO user session (Not logged in OR Session Timeout)
+    if (!req.session.user) {
+        
+        // If this is an AJAX request or the client expects JSON (e.g., API call)
+        if (req.xhr || req.headers.accept.indexOf('json') > -1) {
+            return res.status(401).json({ 
+                error: 'Session timeout - please login again.',
+                code: 'SESSION_TIMEOUT'
+            });
+        }
+
+        // If this is a normal page load in the browser
+        return res.status(401).render('error/access-denied', {
+            title: 'Session Expired',
+            layout: 'error',
+            code: 401,
+            message: 'Session Timeout',
+            description: 'Your session has expired or you are not logged in. Please login again.',
+            isAuthenticated: false
+        });
     }
 
+    // User exists in session, but their account was manually disabled
     if (req.session.user.isActive === false) {
         return res.status(403).render('error/access-denied', {
             layout: 'error',
@@ -15,14 +34,8 @@ const isAuthenticated = (req, res, next) => {
         });
     }
 
-    return res.status(401).render('error/access-denied', {
-        title: 'Unauthorized',
-        layout: 'error',
-        code: 401,
-        message: 'Unauthorized',
-        description: 'You must be logged in to access this page.',
-        isAuthenticated: false
-    });
+    // User is valid and active!
+    return next();
 };
 
 // Role-based authorization middleware

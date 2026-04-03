@@ -1,4 +1,24 @@
 $(function () {
+
+    // ==========================================
+    // GLOBAL AJAX SETUP (CATCH SESSION TIMEOUTS)
+    // ==========================================
+    $.ajaxSetup({
+        error: function(xhr) {
+            // Check if the server responded with our specific 401 Timeout code
+            if (xhr.status === 401) {
+                // Check if the response contains the specific JSON code
+                // to differentiate it from other types of 401 errors
+                const response = xhr.responseJSON;
+                if (response && response.code === 'SESSION_TIMEOUT') {
+                    alert("Session timeout - please login again.");
+                    window.location.href = '/'; 
+                }
+            }
+        }
+    });
+
+
     $('#loginForm').on('submit', function (e) {
         e.preventDefault();
 

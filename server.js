@@ -64,6 +64,7 @@ io.on('connection', (socket) => {
 
             if (now - lastSaved >= 10000) {
                 lastSavedTimes[gameId] = now;
+
                 
                 // Format the clock string for the database (MM:SS)
                 const m = Math.floor(activeGames[gameId].seconds / 60);

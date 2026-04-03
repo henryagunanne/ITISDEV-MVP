@@ -8,13 +8,13 @@ const sessionConfig = {
     rolling: true,  // Resets the expiration clock on every user interaction
     store: MongoStore.create({ 
         mongoUrl: process.env.MONGODB_URI ||'mongodb://127.0.0.1:27017/collegeBasketballDB',
-        ttl: 60 * 60 // Session expiration time (1 hour)
+        ttl: 60 * 60 * 3 // Session expiration time (3 hour)
     }),   // Store sessions in MongoDB
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production', // secure cookies in prod
       sameSite: 'lax',
-      maxAge: 1000 * 60 * 60  // 1 hr
+      maxAge: 1000 * 60 * 60 * 24 * 7  // 7 DAYS
     }
 };
 
