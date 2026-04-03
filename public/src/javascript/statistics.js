@@ -48,6 +48,13 @@ $(document).ready(function () {
 
     
     $('#live-input-btn').click(function () {
+        if (selectedGameId) {
+            if (stat === "PLAYING" || stat === "PAUSED" || stat === "NOT_STARTED") {
+                window.location.href = `/admin/encode-stats?gameId=${selectedGameId}`;
+                return;
+            }
+        }
+
         window.location.href = `/admin/start-game`;
     });
 

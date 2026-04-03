@@ -18,7 +18,8 @@ let debouncing = {};
 let quarter = null;
 
 // Initialize Socket connection
-const socket = io();
+let socket;
+//const socket = io();
 
 
 $(document).ready(function () {
@@ -39,6 +40,10 @@ $(document).ready(function () {
 
     // IF IT IS THE LIVE GAME INPUT PAGE
     if ($('#game-page').length) {
+        socket = io(); // Initialize the socket connection when on the game page
+
+        setupSocketListeners(); // Bind all the listeners
+
         const params = new URLSearchParams(window.location.search);
         gameId = params.get('gameId');
 
@@ -1026,242 +1031,244 @@ $('#ctrl-end').click(function () {
 
 // ======== WEBSOCKET LISTENERS =======
 
-// Listen for the relentless server ticks
-socket.on('clock_tick', (data) => {
-    clockSeconds = data.clockSeconds;
-    updateClockDisplay();
-});
-
-// Listen for UI State changes (Play/Pause/End)
-socket.on('clock_control_updated', (data) => {
-    console.log("Server commanded clock state change:", data.action);
-
-    if (data.action === 'start') {
-        isRunning = true;
-        $('#ctrl-start, #ctrl-resume').addClass('d-none');
-        $('#ctrl-pause').removeClass('d-none');
-        $('.ft-btn').prop('disabled', true).addClass('disabled');
-        
-    } else if (data.action === 'pause') {
-        isRunning = false;
-        $('#ctrl-pause').addClass('d-none');
-        
-        // Smart toggle for Start vs Resume based on what period we are in
-        const period = gameData?.currentPeriod || 1;
-        const fullPeriodSeconds = period > 4 ? 300 : 600;
-
-        if (clockSeconds === fullPeriodSeconds) {
-            $('#ctrl-start').removeClass('d-none');
-            $('#ctrl-resume').addClass('d-none');
-        } else {
-            $('#ctrl-start').addClass('d-none');
-            $('#ctrl-resume').removeClass('d-none');
-        }
-
-    } else if (data.action === 'end') {
-        isRunning = false;
-        $('#game-controls').html('<span class="badge bg-danger">FINAL</span>');
-        $('#hdr-clock').text("00:00");
-        $('.stat-btn, .sub-btn, #undo-btn').prop('disabled', true);
-
-    } else if (data.action === 'foul') {
-        $('.ft-btn').prop('disabled', false).removeClass('disabled');
-    }
-
-    if (typeof updateControls === "function") updateControls();
-});
-
-
-// --- Listen for stat updates (For other admins or viewers) ---
-socket.on('stat_recorded', (data) => {
-    console.log("A stat was updated by someone else!", data);
-
-    // Hydrate all global variables
-    gameData = data.updatedGame; 
-    allStats = data.updatedStats;
-
-    // Refresh the necessary panels to keep everyone in sync
-    updateScoreboard(); // Reloads the UI scoreboard
-    updateAllPlayerStats(); // Refreshes all player stat boxes
-    renderEvents(data.events); // Re-render the play-by-play feed with the latest events
-    
-});
-
-// -- Listen for game status updates (For other admins or viewers) --
-socket.on('game_status_updated', (data) => {
-    console.log("Game status updated by someone else!", data);
-    gameData = data.updatedGame; // Update the global gameData variable with the latest from the server
-    updateControls();
-    updateScoreboard();
-});
-
-// -- Listen for undo actions (For other admins or viewers) --
-socket.on('event_undone', (data) => {
-    console.log("An undo was performed by someone else!", data);
-    gameData = data.updatedGame; // Update the global gameData variable with the latest from the server
-    allStats = data.updatedStats; // Update the global stats variable with the latest from the server
-    updateScoreboard();
-    updateAllPlayerStats();
-    renderEvents(data.events);
-
-    const event = data.lastEvent;
-
-    if (event && (event.eventType === 'sub_in' || event.eventType === 'sub_out')) {
-        reverseSubstitutionUI(event);
-    }
-});
-
-// -- Listen for add overtime (For other admins or viewers) --
-socket.on('overtime_added', (data) => {
-    console.log("Overtime added by someone else!", data);
-    gameData = data.game; // Update the global gameData variable with the latest from the server
-    clockSeconds = 300; // Set OT clock to 5 minutes
-    updateClockDisplay();
-    updateScoreboard();
-});
-
-
-// -- Listen for UI/Layout changes (Sortable drags or Substitutions) --
-socket.on('ui_layout_synced', (data) => {
-    console.log("UI Layout changed by another admin:", data.panelId);
-
-    const panel = document.getElementById(data.panelId);
-    if (!panel) return;
-
-    // Loop through the incoming order array
-    data.order.forEach(elementId => {
-        const el = document.getElementById(elementId);
-        if (el) {
-            // In the DOM, appending an element that already exists inside the same container
-            // simply moves it to the bottom. By looping through the array in order, 
-            // it reconstructs the exact visual layout without duplicating anything!
-            panel.appendChild(el);
-        }
-    });
-});
-
-
-// -- Listen for Substitution UI Toggles --
-socket.on('on_court_toggled', (data) => {
-    console.log(`Row toggled by another admin: ${data.rowId}`);
-    
-    // Find the exact row that Admin A toggled
-    const targetRow = $(`#${data.rowId}`);
-    
-    if (targetRow.length) {
-        // Call the toggle function, passing the row itself as the "btn"
-        // (jQuery's .closest() will gracefully handle this!)
-        // Pass FALSE so it doesn't bounce back or hit the DB!
-        if (typeof toggleOnCourt === 'function') {
-            toggleOnCourt(targetRow[0], false);
-        }
-    }
-});
-
-
-// -- ACTIVE CONNECTION: Hears a request and reads its screen --
-socket.on('request_ui_sync', () => {
-    // If this connection hasn't loaded players yet, ignore the request
-    if ($('.player-row').length === 0) return;
-
-    // Take a snapshot of the exact HTML IDs and their current order
-    const homeOrder = $('#home-players-panel').children('.player-row').map((i, el) => el.id).get();
-    const oppOrder = $('#opp-players-panel').children('.player-row').map((i, el) => el.id).get();
-    
-    // Find every HTML ID that currently has the on-court status
-    const onCourtIds = $('.player-row').filter(function() { 
-        return $(this).data('oncourt') === true; 
-    }).map((i, el) => el.id).get();
-
-    // Send the snapshot back to the room
-    socket.emit('send_ui_sync', {
-        gameId: gameId,
-        homeOrder: homeOrder,
-        oppOrder: oppOrder,
-        onCourtIds: onCourtIds,
-        isRunning: isRunning,
-        clockSeconds: clockSeconds
-    });
-});
-
-
-// RELOADED CONNECTION: Receives the snapshot and applies it --
-socket.on('receive_ui_sync', (data) => {
-    console.log("Hydrating UI layout from another active connection...");
-
-    // Reorder the Home Panel
-    const homePanel = document.getElementById('home-players-panel');
-    if (homePanel && data.homeOrder) {
-        data.homeOrder.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) homePanel.appendChild(el); 
-        });
-    }
-
-    // Reorder the Opponent Panel
-    const oppPanel = document.getElementById('opp-players-panel');
-    if (oppPanel && data.oppOrder) {
-        data.oppOrder.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) oppPanel.appendChild(el);
-        });
-    }
-
-    // Apply On-Court visual statuses
-    if (data.onCourtIds) {
-        // Reset everyone to the bench first to guarantee a clean slate
-        $('.player-row').data('oncourt', false).removeClass('on-court on-court-opp');
-        
-        // Loop through the snapshot and put the right people back on the court
-        data.onCourtIds.forEach(id => {
-            const row = $(`#${id}`);
-            if (row.length) {
-                const team = row.data('team');
-                row.data('oncourt', true);
-                row.addClass(team === 'lasalle' ? 'on-court' : 'on-court-opp');
-            }
-        });
-    }
-
-    // Hydrate Control & Clock State
-    if (data.isRunning !== undefined) {
-        isRunning = data.isRunning;
+function setupSocketListeners() {
+    // Listen for the relentless server ticks
+    socket.on('clock_tick', (data) => {
         clockSeconds = data.clockSeconds;
-        
-        // Force the physical numbers on the clock to match the active connection exactly
-        if (typeof updateClockDisplay === 'function') updateClockDisplay();
-        
-        // Lock/Unlock the appropriate UI buttons based on the synced state
-        if (isRunning) {
-            
-            // Replicate the 'start' action UI
+        updateClockDisplay();
+    });
+
+    // Listen for UI State changes (Play/Pause/End)
+    socket.on('clock_control_updated', (data) => {
+        console.log("Server commanded clock state change:", data.action);
+
+        if (data.action === 'start') {
+            isRunning = true;
             $('#ctrl-start, #ctrl-resume').addClass('d-none');
             $('#ctrl-pause').removeClass('d-none');
             $('.ft-btn').prop('disabled', true).addClass('disabled');
             
-        } else {
-            // Clock is paused. Show Resume instead of Start if time has elapsed
+        } else if (data.action === 'pause') {
+            isRunning = false;
             $('#ctrl-pause').addClass('d-none');
             
-            // Find out what a "full clock" means for the current period
-            const isOvertime = (quarter > 4); 
-            const fullPeriodSeconds = isOvertime ? 300 : 600;
+            // Smart toggle for Start vs Resume based on what period we are in
+            const period = gameData?.currentPeriod || 1;
+            const fullPeriodSeconds = period > 4 ? 300 : 600;
 
-            // If the clock is completely full for this specific period, show Start
             if (clockSeconds === fullPeriodSeconds) {
                 $('#ctrl-start').removeClass('d-none');
                 $('#ctrl-resume').addClass('d-none');
-            } 
-            // If it's anything less than full, show Resume
-            else if (clockSeconds < fullPeriodSeconds && clockSeconds > 0) {
+            } else {
                 $('#ctrl-start').addClass('d-none');
                 $('#ctrl-resume').removeClass('d-none');
             }
+
+        } else if (data.action === 'end') {
+            isRunning = false;
+            $('#game-controls').html('<span class="badge bg-danger">FINAL</span>');
+            $('#hdr-clock').text("00:00");
+            $('.stat-btn, .sub-btn, #undo-btn').prop('disabled', true);
+
+        } else if (data.action === 'foul') {
+            $('.ft-btn').prop('disabled', false).removeClass('disabled');
         }
+
+        if (typeof updateControls === "function") updateControls();
+    });
+
+
+    // --- Listen for stat updates (For other admins or viewers) ---
+    socket.on('stat_recorded', (data) => {
+        console.log("A stat was updated by someone else!", data);
+
+        // Hydrate all global variables
+        gameData = data.updatedGame; 
+        allStats = data.updatedStats;
+
+        // Refresh the necessary panels to keep everyone in sync
+        updateScoreboard(); // Reloads the UI scoreboard
+        updateAllPlayerStats(); // Refreshes all player stat boxes
+        renderEvents(data.events); // Re-render the play-by-play feed with the latest events
         
-        // Refresh your main controls helper if you have one
-        if (typeof updateControls === 'function') {
-            updateControls();
+    });
+
+    // -- Listen for game status updates (For other admins or viewers) --
+    socket.on('game_status_updated', (data) => {
+        console.log("Game status updated by someone else!", data);
+        gameData = data.updatedGame; // Update the global gameData variable with the latest from the server
+        updateControls();
+        updateScoreboard();
+    });
+
+    // -- Listen for undo actions (For other admins or viewers) --
+    socket.on('event_undone', (data) => {
+        console.log("An undo was performed by someone else!", data);
+        gameData = data.updatedGame; // Update the global gameData variable with the latest from the server
+        allStats = data.updatedStats; // Update the global stats variable with the latest from the server
+        updateScoreboard();
+        updateAllPlayerStats();
+        renderEvents(data.events);
+
+        const event = data.lastEvent;
+
+        if (event && (event.eventType === 'sub_in' || event.eventType === 'sub_out')) {
+            reverseSubstitutionUI(event);
         }
-    }
-});
+    });
+
+    // -- Listen for add overtime (For other admins or viewers) --
+    socket.on('overtime_added', (data) => {
+        console.log("Overtime added by someone else!", data);
+        gameData = data.game; // Update the global gameData variable with the latest from the server
+        clockSeconds = 300; // Set OT clock to 5 minutes
+        updateClockDisplay();
+        updateScoreboard();
+    });
+
+
+    // -- Listen for UI/Layout changes (Sortable drags or Substitutions) --
+    socket.on('ui_layout_synced', (data) => {
+        console.log("UI Layout changed by another admin:", data.panelId);
+
+        const panel = document.getElementById(data.panelId);
+        if (!panel) return;
+
+        // Loop through the incoming order array
+        data.order.forEach(elementId => {
+            const el = document.getElementById(elementId);
+            if (el) {
+                // In the DOM, appending an element that already exists inside the same container
+                // simply moves it to the bottom. By looping through the array in order, 
+                // it reconstructs the exact visual layout without duplicating anything!
+                panel.appendChild(el);
+            }
+        });
+    });
+
+
+    // -- Listen for Substitution UI Toggles --
+    socket.on('on_court_toggled', (data) => {
+        console.log(`Row toggled by another admin: ${data.rowId}`);
+        
+        // Find the exact row that Admin A toggled
+        const targetRow = $(`#${data.rowId}`);
+        
+        if (targetRow.length) {
+            // Call the toggle function, passing the row itself as the "btn"
+            // (jQuery's .closest() will gracefully handle this!)
+            // Pass FALSE so it doesn't bounce back or hit the DB!
+            if (typeof toggleOnCourt === 'function') {
+                toggleOnCourt(targetRow[0], false);
+            }
+        }
+    });
+
+
+    // -- ACTIVE CONNECTION: Hears a request and reads its screen --
+    socket.on('request_ui_sync', () => {
+        // If this connection hasn't loaded players yet, ignore the request
+        if ($('.player-row').length === 0) return;
+
+        // Take a snapshot of the exact HTML IDs and their current order
+        const homeOrder = $('#home-players-panel').children('.player-row').map((i, el) => el.id).get();
+        const oppOrder = $('#opp-players-panel').children('.player-row').map((i, el) => el.id).get();
+        
+        // Find every HTML ID that currently has the on-court status
+        const onCourtIds = $('.player-row').filter(function() { 
+            return $(this).data('oncourt') === true; 
+        }).map((i, el) => el.id).get();
+
+        // Send the snapshot back to the room
+        socket.emit('send_ui_sync', {
+            gameId: gameId,
+            homeOrder: homeOrder,
+            oppOrder: oppOrder,
+            onCourtIds: onCourtIds,
+            isRunning: isRunning,
+            clockSeconds: clockSeconds
+        });
+    });
+
+
+    // RELOADED CONNECTION: Receives the snapshot and applies it --
+    socket.on('receive_ui_sync', (data) => {
+        console.log("Hydrating UI layout from another active connection...");
+
+        // Reorder the Home Panel
+        const homePanel = document.getElementById('home-players-panel');
+        if (homePanel && data.homeOrder) {
+            data.homeOrder.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) homePanel.appendChild(el); 
+            });
+        }
+
+        // Reorder the Opponent Panel
+        const oppPanel = document.getElementById('opp-players-panel');
+        if (oppPanel && data.oppOrder) {
+            data.oppOrder.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) oppPanel.appendChild(el);
+            });
+        }
+
+        // Apply On-Court visual statuses
+        if (data.onCourtIds) {
+            // Reset everyone to the bench first to guarantee a clean slate
+            $('.player-row').data('oncourt', false).removeClass('on-court on-court-opp');
+            
+            // Loop through the snapshot and put the right people back on the court
+            data.onCourtIds.forEach(id => {
+                const row = $(`#${id}`);
+                if (row.length) {
+                    const team = row.data('team');
+                    row.data('oncourt', true);
+                    row.addClass(team === 'lasalle' ? 'on-court' : 'on-court-opp');
+                }
+            });
+        }
+
+        // Hydrate Control & Clock State
+        if (data.isRunning !== undefined) {
+            isRunning = data.isRunning;
+            clockSeconds = data.clockSeconds;
+            
+            // Force the physical numbers on the clock to match the active connection exactly
+            if (typeof updateClockDisplay === 'function') updateClockDisplay();
+            
+            // Lock/Unlock the appropriate UI buttons based on the synced state
+            if (isRunning) {
+                
+                // Replicate the 'start' action UI
+                $('#ctrl-start, #ctrl-resume').addClass('d-none');
+                $('#ctrl-pause').removeClass('d-none');
+                $('.ft-btn').prop('disabled', true).addClass('disabled');
+                
+            } else {
+                // Clock is paused. Show Resume instead of Start if time has elapsed
+                $('#ctrl-pause').addClass('d-none');
+                
+                // Find out what a "full clock" means for the current period
+                const isOvertime = (quarter > 4); 
+                const fullPeriodSeconds = isOvertime ? 300 : 600;
+
+                // If the clock is completely full for this specific period, show Start
+                if (clockSeconds === fullPeriodSeconds) {
+                    $('#ctrl-start').removeClass('d-none');
+                    $('#ctrl-resume').addClass('d-none');
+                } 
+                // If it's anything less than full, show Resume
+                else if (clockSeconds < fullPeriodSeconds && clockSeconds > 0) {
+                    $('#ctrl-start').addClass('d-none');
+                    $('#ctrl-resume').removeClass('d-none');
+                }
+            }
+            
+            // Refresh your main controls helper if you have one
+            if (typeof updateControls === 'function') {
+                updateControls();
+            }
+        }
+    });
+}
