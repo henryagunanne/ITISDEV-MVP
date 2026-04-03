@@ -19,6 +19,9 @@ app.set('io', io);
 
 // Create an in-memory tracker for the last time we hit the database
 const lastSavedTimes = {};
+// Global memory objects to hold the state of all active games
+const activeGames = {}; 
+
 
 io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
@@ -29,42 +32,109 @@ io.on('connection', (socket) => {
         console.log(`Socket ${socket.id} joined game: ${gameId}`);
     });
 
-    // Listen for clock updates from the Admin and broadcast to viewers
-    socket.on('sync_clock', async (data) => {
-       // INSTANT BROADCAST: Send the time to all viewers immediately with 0 delay
-       socket.to(data.gameId).emit('clock_updated', {
-            gameClock: data.gameClock,
-            clockSeconds: data.clockSeconds
-        });
+    // --- START CLOCK COMMAND ---
+    socket.on('cmd_start_clock', (gameId) => {
+        if (!activeGames[gameId]) {
+            activeGames[gameId] = { 
+                seconds: 600, 
+                isRunning: false, 
+                interval: null 
+            };
+        }
+        
+        if (activeGames[gameId].isRunning) return; 
 
-        // THROTTLED DB SAVE: Only update MongoDB every 10 seconds
-        const now = Date.now();
-        const lastSaved = lastSavedTimes[data.gameId] || 0;
+        activeGames[gameId].isRunning = true;
+        
+        // Broadcast the start action to unlock the UI for everyone
+        io.to(gameId).emit('clock_control_updated', { action: 'start' });
 
-        // If 10,000 milliseconds (10 seconds) have passed since the last save
-        if (now - lastSaved >= 10000) {
-            lastSavedTimes[data.gameId] = now; // Update the tracker
+        // Start the server-side countdown
+        activeGames[gameId].interval = setInterval(async () => {
+            activeGames[gameId].seconds--;
             
-            try {
-                // "Fire and forget" DB update. We don't await this blocking the socket.
-                await Game.findByIdAndUpdate(data.gameId, { 
-                    gameClock: data.gameClock
-                });
-                console.log(`[DB] Backed up clock for ${data.gameId}: ${data.gameClock}`);
-            } catch (error) {
-                console.error("Error backing up game clock:", error);
+            // INSTANT BROADCAST: Send the exact second to EVERYONE
+            io.to(gameId).emit('clock_tick', { 
+                clockSeconds: activeGames[gameId].seconds 
+            });
+
+            // THROTTLED DB SAVE: 10-second backup logic
+            const now = Date.now();
+            const lastSaved = lastSavedTimes[gameId] || 0;
+
+            if (now - lastSaved >= 10000) {
+                lastSavedTimes[gameId] = now;
+                
+                // Format the clock string for the database (MM:SS)
+                const m = Math.floor(activeGames[gameId].seconds / 60);
+                const s = activeGames[gameId].seconds % 60;
+                const gameClockStr = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+                
+                try {
+                    // Fire and forget DB update
+                    await Game.findByIdAndUpdate(gameId, { gameClock: gameClockStr });
+                    // console.log(`[DB] Backed up clock for ${gameId}: ${gameClockStr}`);
+                } catch (error) {
+                    console.error("Error backing up game clock:", error);
+                }
             }
+
+            // AUTO-END PERIOD
+            if (activeGames[gameId].seconds <= 0) {
+                clearInterval(activeGames[gameId].interval);
+                activeGames[gameId].isRunning = false;
+                io.to(gameId).emit('clock_control_updated', { action: 'end' });
+            }
+        }, 1000);
+    });
+
+    // --- PAUSE CLOCK COMMAND ---
+    socket.on('cmd_pause_clock', (gameId) => {
+        if (activeGames[gameId] && activeGames[gameId].isRunning) {
+            clearInterval(activeGames[gameId].interval);
+            activeGames[gameId].isRunning = false;
+            
+            // Tell ALL clients to show the 'Resume' button
+            io.to(gameId).emit('clock_control_updated', { action: 'pause' });
         }
     });
 
-    // Handle start/pause relay from one socket to all others in the same game room
-    socket.on('clock_control', (data) => {
-        // Relays the 'start' or 'pause' action to everyone else in the game room
-        socket.to(data.gameId).emit('clock_control_updated', {
-            action: data.action
-        });
+    // --- SET/RESET CLOCK COMMAND (For Quarters & Overtime) ---
+    socket.on('cmd_set_clock', (data) => {
+        const { gameId, newSeconds } = data;
+        
+        if (!activeGames[gameId]) {
+            activeGames[gameId] = { seconds: 600, isRunning: false, interval: null };
+        }
+        
+        // Update the server's memory with the new time
+        activeGames[gameId].seconds = newSeconds;
+        
+        // Broadcast the new time immediately without waiting for a tick
+        io.to(gameId).emit('clock_tick', { clockSeconds: newSeconds });
     });
 
+
+    // --- UNLOCK FREE THROWS COMMAND ---
+    socket.on('cmd_unlock_ft', (gameId) => {
+        // Tell everyone in the room to unlock their FT buttons
+        io.to(gameId).emit('clock_control_updated', { action: 'foul' });
+    });
+
+
+    // --- END GAME COMMAND ---
+    socket.on('cmd_end_game', (gameId) => {
+        // Physically stop the server interval if it's running
+        if (activeGames[gameId]) {
+            clearInterval(activeGames[gameId].interval);
+            activeGames[gameId].isRunning = false;
+        }
+        
+        // Tell everyone in the room to update their UI to the "FINAL" state
+        io.to(gameId).emit('clock_control_updated', { action: 'end' });
+    });
+
+    
     // Handle UI layout relay from one socket to all others in the same game room
     socket.on('sync_ui_layout', (data) => {
         // Relays the exact HTML DOM order of the player panels to other admins

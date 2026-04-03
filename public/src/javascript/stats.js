@@ -480,13 +480,10 @@ function updateControls() {
             // Pause the clock if it's currently running
             if (isRunning) {
                 $('#ctrl-pause').click(); 
-
-                // Tell the server you paused the clock
-                socket.emit('clock_control', { gameId: gameId, action: 'foul' });
             }
-
-            // Enable and highlight Free Throw buttons
-            $('.ft-btn').prop('disabled', false).removeClass('disabled');
+            
+            // Tell the SERVER to broadcast the foul state so Free Throw buttons unlock
+            socket.emit('cmd_unlock_ft', gameId);
         }
 
         recordStat(this, event);
@@ -863,39 +860,11 @@ function formatClock(s) {
 
 // helper to update the clock display based on the current clockSeconds value
 function updateClockDisplay() {
-    // Reset the watchdog timer every time the clock moves
-    lastClockTick = Date.now();
-
     $('#hdr-clock').text(formatClock(clockSeconds));
 }
 
 
 // ===================== CLOCK CONTROL =====================
-
-function startClock() {
-    if (clockInterval) return;
-    isRunning = true;
-
-    updateControls();
-    clockInterval = setInterval(() => {
-        if (clockSeconds > 0) {
-            clockSeconds--;
-            updateClockDisplay();
-        } else {
-            stopClock();
-        }
-    }, 1000);
-}
-
-function stopClock() {
-    isRunning = false;
-
-    updateControls();
-    if (clockInterval) { 
-        clearInterval(clockInterval); 
-        clockInterval = null; 
-    }
-}
 
 // Game controls
 $('#ctrl-start').click(function () {
@@ -942,18 +911,9 @@ $('#ctrl-start').click(function () {
         }),
         success: function (res) {
             gameData = res.updatedGame || res;
-            startClock();
-
-            isMasterClock = true; // Claim control of the broadcast
-
-            // Tell the server you started the clock
-            socket.emit('clock_control', { gameId: gameId, action: 'start' });
-
-            $('#ctrl-start').addClass('d-none');
-            $('#ctrl-pause').removeClass('d-none');
-
-            // --- Lock FT buttons on start ---
-            $('.ft-btn').prop('disabled', true).addClass('disabled');
+            
+            // Tell the SERVER to start the clock
+            socket.emit('cmd_start_clock', gameId);
         },
         error: function(err) {
             console.error("Failed to start/resume game:", err);
@@ -974,15 +934,9 @@ $('#ctrl-pause').click(function () {
         }),
         success: function (res) {
             gameData = res.updatedGame || res;
-            stopClock();
 
-            isMasterClock = false; // Relinquish control of the broadcast
-
-            // Tell the server you paused the clock
-            socket.emit('clock_control', { gameId: gameId, action: 'pause' });
-
-            $('#ctrl-pause').addClass('d-none');
-            $('#ctrl-resume').removeClass('d-none');
+            // Tell the SERVER to pause the clock
+            socket.emit('cmd_pause_clock', gameId);
         }
     });
 });
@@ -995,29 +949,16 @@ $('#ctrl-resume').click(function () {
         data: JSON.stringify({ status: 'PLAYING' }),
         success: function (res) {
             gameData = res.updatedGame || res;
-            startClock();
 
-            isMasterClock = true; // Claim control of the broadcast
-
-            // Tell the server you started the clock
-            socket.emit('clock_control', { gameId: gameId, action: 'start' });
-
-            $('#ctrl-resume').addClass('d-none');
-            $('#ctrl-pause').removeClass('d-none');
-
-            // --- Lock FT buttons on resume ---
-            $('.ft-btn').prop('disabled', true).addClass('disabled');
+            // Tell the SERVER to start the clock
+            socket.emit('cmd_start_clock', gameId);
         }
     });
 });
 
 $('#ctrl-next-q').click(function () {
-    stopClock();
-
-    isMasterClock = false; // Relinquish control of the broadcast
-
-    // Tell the server you paused the clock
-    socket.emit('clock_control', { gameId: gameId, action: 'pause' });
+    // Pause the server clock immediately
+    socket.emit('cmd_pause_clock', gameId);
 
     const nextPeriod = (gameData.currentPeriod || 1) + 1;
     if (nextPeriod > 4 + (gameData.quarterScores?.overtimes?.length || 0)) return;
@@ -1036,20 +977,16 @@ $('#ctrl-next-q').click(function () {
         success: function (res) {
             gameData = res.updatedGame || res;
             updateScoreboard();
-            $('#ctrl-pause').addClass('d-none');
-            $('#ctrl-resume').removeClass('d-none');
+            
+            // Tell the SERVER we reset the clock for a new quarter
+            socket.emit('cmd_set_clock', { gameId: gameId, newSeconds: clockSeconds });
         }
     });
-    //updateControls();
 });
 
 $('#ctrl-ot').click(function () {
-    stopClock();
-
-    isMasterClock = false; // Relinquish control of the broadcast
-
-    // Tell the server you paused the clock
-    socket.emit('clock_control', { gameId: gameId, action: 'pause' });
+    // Pause the server clock immediately
+    socket.emit('cmd_pause_clock', gameId);
 
     $.ajax({ 
         url: `${API}/api/games/${gameId}/overtime`, 
@@ -1059,20 +996,15 @@ $('#ctrl-ot').click(function () {
             clockSeconds = 300;
             updateClockDisplay();
             updateScoreboard();
-            $('#ctrl-pause').addClass('d-none');
-            $('#ctrl-resume').removeClass('d-none');
+            
+            // Tell the SERVER we reset the clock for OT
+            socket.emit('cmd_set_clock', { gameId: gameId, newSeconds: clockSeconds });
         }
     });
 });
 
 $('#ctrl-end').click(function () {
     if (!confirm('End the game?')) return;
-    stopClock();
-
-    isMasterClock = false; // Relinquish control of the broadcast
-
-    // Tell the server you paused the clock
-    socket.emit('clock_control', { gameId: gameId, action: 'end' });
 
     $.ajax({ 
         url: `${API}/api/games/${gameId}`, 
@@ -1084,78 +1016,61 @@ $('#ctrl-end').click(function () {
         }),
         success: function (res) {
             gameData = res.updatedGame || res;
-            $('#game-controls').html('<span class="badge bg-danger">FINAL</span>');
+            
+            // Tell the SERVER to kill the clock and broadcast the end state
+            socket.emit('cmd_end_game', gameId);
         }
     });
 });
 
 
-/*
-// Sync clock to server periodically
-let isSyncing = false;
-setInterval(async function () {
-    if (gameId && isRunning && !isSyncing) {
-        isSyncing = true;
-        try {
-            await $.ajax({ 
-                url: `${API}/api/games/${gameId}`, 
-                method: 'PATCH', 
-                contentType: 'application/json',
-                data: JSON.stringify({ gameClock: formatClock(clockSeconds) })
-            });
-        } finally {
-            isSyncing = false;
-        }
-    }
-}, 15000);
-
-*/
-
-// Sync clock to viewers via WebSockets
-setInterval(function () {
-    // Only do these checks if the game is actually unpaused
-    if (gameId && isRunning) {
-        
-        if (isMasterClock) {
-            // MASTER MODE: Broadcast the current time to everyone else
-            socket.emit('sync_clock', { 
-                gameId: gameId, 
-                gameClock: formatClock(clockSeconds), 
-                clockSeconds: clockSeconds 
-            });
-            
-        } else {
-            // VIEWER MODE: Run the Self-Healing Watchdog
-            const timeSinceLastTick = Date.now() - lastClockTick;
-            
-            // If it has been more than 2.5 seconds since we heard from the Master...
-            if (timeSinceLastTick > 2500) {
-                console.warn("Master connection lost! Taking over as Master...");
-                
-                // Promote this connection to Master
-                isMasterClock = true;
-                
-                // Restart the local countdown interval
-                if (typeof startClock === 'function') startClock(); 
-            }
-        }
-    }
-}, 1000); // Ticks every 1 second instead of a delayed interval
-
-
 // ======== WEBSOCKET LISTENERS =======
 
-// --- Listen for clock updates (For other admins or viewers) ---
-socket.on('clock_updated', (data) => {
-    // If this screen IS NOT running the clock (e.g., an assistant coach's tablet), update the UI
-    if (!isMasterClock) {
-        // Reset the watchdog timer because the Master is alive!
-        lastClockTick = Date.now();
-
-        clockSeconds = data.clockSeconds;
-        $('#hdr-clock').text(data.gameClock);
-    }
+// Listen for the relentless server ticks
+socket.on('clock_tick', (data) => {
+    clockSeconds = data.clockSeconds;
+    updateClockDisplay();
 });
+
+// Listen for UI State changes (Play/Pause/End)
+socket.on('clock_control_updated', (data) => {
+    console.log("Server commanded clock state change:", data.action);
+
+    if (data.action === 'start') {
+        isRunning = true;
+        $('#ctrl-start, #ctrl-resume').addClass('d-none');
+        $('#ctrl-pause').removeClass('d-none');
+        $('.ft-btn').prop('disabled', true).addClass('disabled');
+        
+    } else if (data.action === 'pause') {
+        isRunning = false;
+        $('#ctrl-pause').addClass('d-none');
+        
+        // Smart toggle for Start vs Resume based on what period we are in
+        const period = gameData?.currentPeriod || 1;
+        const fullPeriodSeconds = period > 4 ? 300 : 600;
+
+        if (clockSeconds === fullPeriodSeconds) {
+            $('#ctrl-start').removeClass('d-none');
+            $('#ctrl-resume').addClass('d-none');
+        } else {
+            $('#ctrl-start').addClass('d-none');
+            $('#ctrl-resume').removeClass('d-none');
+        }
+
+    } else if (data.action === 'end') {
+        isRunning = false;
+        $('#game-controls').html('<span class="badge bg-danger">FINAL</span>');
+        $('#hdr-clock').text("00:00");
+        $('.stat-btn, .sub-btn, #undo-btn').prop('disabled', true);
+
+    } else if (data.action === 'foul') {
+        $('.ft-btn').prop('disabled', false).removeClass('disabled');
+    }
+
+    if (typeof updateControls === "function") updateControls();
+});
+
 
 // --- Listen for stat updates (For other admins or viewers) ---
 socket.on('stat_recorded', (data) => {
@@ -1203,53 +1118,6 @@ socket.on('overtime_added', (data) => {
     clockSeconds = 300; // Set OT clock to 5 minutes
     updateClockDisplay();
     updateScoreboard();
-});
-
-// -- Listen for Clock Play/Pause actions from other admins --
-socket.on('clock_control_updated', (data) => {
-    console.log("Clock control changed by another admin:", data.action);
-
-    if (data.action === 'start') {
-        isRunning = true;
-
-        // Viewers unlock their UI, but DO NOT become the master clock
-        isMasterClock = false;
-        
-        // Update the play/pause button visibility
-        $('#ctrl-start, #ctrl-resume').addClass('d-none');
-        $('#ctrl-pause').removeClass('d-none');
-        $('.ft-btn').prop('disabled', true).addClass('disabled');
-        
-    } else if (data.action === 'pause') {
-        isRunning = false;
-        isMasterClock = false;
-
-        // If a viewer clicks pause, ensure the master stops their local interval too
-        if (typeof stopClock === 'function') stopClock();
-        
-        // Update the play/pause button visibility
-        $('#ctrl-pause').addClass('d-none');
-        $('#ctrl-resume').removeClass('d-none');
-
-    } else if (data.action === 'end') {
-        isRunning = false;
-        isMasterClock = false;
-
-        $('#game-controls').html('<span class="badge bg-danger">FINAL</span>');
-        $('#hdr-clock').text("00:00");
-        $('.stat-btn').prop('disabled', true);
-        $('.sub-btn').prop('disabled', true);
-        $('#undo-btn').prop('disabled', true);
-
-    } else if (data.action === 'foul') {
-        // Enable and highlight Free Throw buttons
-        $('.ft-btn').prop('disabled', false).removeClass('disabled');
-    }
-
-    // Refresh the button lock/unlock states based on the new isRunning value
-    if (typeof updateControls === "function") {
-        updateControls();
-    }
 });
 
 
@@ -1363,10 +1231,8 @@ socket.on('receive_ui_sync', (data) => {
         // Force the physical numbers on the clock to match the active connection exactly
         if (typeof updateClockDisplay === 'function') updateClockDisplay();
         
-        // 2. Lock/Unlock the appropriate UI buttons based on the synced state
+        // Lock/Unlock the appropriate UI buttons based on the synced state
         if (isRunning) {
-            // Because another admin is running the clock, this reloaded page is a VIEWER
-            isMasterClock = false; 
             
             // Replicate the 'start' action UI
             $('#ctrl-start, #ctrl-resume').addClass('d-none');
