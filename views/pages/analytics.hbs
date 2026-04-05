@@ -6,7 +6,7 @@
 
         <!-- Header -->
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="fw-bold">Reports & Analytics</h2>
+            <h2 class="fw-bold text-success"><i class="fas fa-file-alt"></i> Reports & Analytics</h2>
             <div>
                 <button class="btn btn-outline-success me-2" onclick="exportCSV()">Export CSV</button>
                  <button class="btn btn-outline-success me-2" onclick="exportPDF()">Export PDF</button>
@@ -98,21 +98,23 @@
         </div>
         <div class="card p-3">
             <h5>Player Performance</h5>
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>Player</th>
-                        <th>PPG</th>
-                        <th>RPG</th>
-                        <th>APG</th>
-                        <th>MPG</th>
-                        <th>EFF</th>
-                        <th>TS%</th>
-                        <th>Usage</th>
-                    </tr>
-                </thead>
-                <tbody id="playerTable"></tbody>
-            </table>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Player</th>
+                            <th>PPG</th>
+                            <th>RPG</th>
+                            <th>APG</th>
+                            <th>MPG</th>
+                            <th>EFF</th>
+                            <th>TS%</th>
+                            <th>Usage</th>
+                        </tr>
+                    </thead>
+                    <tbody id="playerTable"></tbody>
+                </table>
+            </div>
         </div>
 
         <div class="card mt-4">

@@ -11,11 +11,7 @@ body {
   color: #333;
 }
 
-/* LAYOUT */
-.main {
-  flex: 1;
-  padding: 25px;
-}
+
 
 /* PAGE HEADER */
 .dashboard-header {
@@ -58,7 +54,7 @@ body {
 
 /* ADD PLAYER BUTTON */
 .add-player {
-  background: #0b5d3b;
+  background: #006F3C;;
   color: white;
   border: none;
   padding: 10px 16px;
@@ -89,7 +85,7 @@ table {
 }
 
 thead {
-  background: #0b5d3b;
+  background: #006F3C;;
   color: white;
 }
 

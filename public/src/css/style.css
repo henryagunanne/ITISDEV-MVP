@@ -57,6 +57,9 @@ body {
   border-right: 1px solid var(--dlsu-gray-200);
   padding-top: 1.5rem;
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.04);
+  position: fixed;
+  overflow-y: auto;
+  z-index: 1000;
 }
 
 .sidebar .nav-link {
