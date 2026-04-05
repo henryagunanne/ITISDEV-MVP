@@ -126,3 +126,97 @@ brew tap mongodb/brew
 brew install mongodb-community
 brew services start mongodb-community
 mongosh
+```
+### Windows
+1. Install MongoDB Community Server
+2. Enable “Run as a Service”
+3. Start MongoDB via Services
+4. Verify:
+   ```bash
+   mongosh
+   ```
+## ⚙️ Installation
+```bash
+git clone https://github.com/henryagunanne/ITISDEV-MVP.git
+cd ITISDEV-MVP
+```
+
+### Install Dependencies and Populate Database
+```bash
+npm install
+npm run seedAdmin
+```
+
+### 🔑 Environment Variables
+Edit the .env.example file and input your own credentials. Rename the file to just .env
+
+## ▶️ Running the Application
+```bash
+npm start
+```
+or
+```bash
+npm server.js
+```
+---
+
+## 📊 Core Data Models
+- User – authentication and roles
+- Player – player profiles
+- Game – match details
+- GameStats – player statistics per game
+- GameEvents – play-by-play event tracking
+- Tournament - Tournaments tracking
+
+---
+
+## 🔄 System Workflow
+1. User logs into the system
+2. Admin creates players and games
+3. Stats are recorded live or post-game
+4. Data is stored in MongoDB
+5. Backend processes analytics
+6. Frontend displays insights and reports
+ 
+---
+
+## 📌 Skills Demonstrated
+- Full-Stack Web Development
+- RESTful API Design
+- MongoDB Data Modeling
+- Real-Time Data Handling
+- Analytics Processing
+- Authentication Systems
+- Software Architecture Design
+- Technical Documentation
+- Team Collaboration
+
+---
+
+## 🔮 Future Improvements
+- 🤖 Machine Learning predictions (player performance, game outcomes)
+- 📱 Mobile-responsive dashboards
+- 📅 Multi-season analytics
+- 📤 Export reports (CSV, Excel)
+- 📡 Integration with external sports APIs
+
+---
+
+## ⚠️ Limitations
+- Manual stat input may introduce human error
+- Currently limited to single-season tracking
+- Basic analytics compared to professional systems
+
+--- 
+
+## 📄 License
+This project is licensed under the MIT License.
+See the [LICENSE](./LICENSE) file for details.
+
+--- 
+
+## 📄 AI Assistance Disclosure
+This README file was generated with the assistance of ChatGPT and was reviewed, edited, and verified by the project authors.
+All system design, implementation, and development were completed by the project team.
+
+
