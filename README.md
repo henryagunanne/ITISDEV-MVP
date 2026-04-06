@@ -73,10 +73,10 @@ This system aims to:
 
 | Layer | Technologies Used |
 |------|------------------|
-| Frontend | HTML, CSS, JavaScript, React |
+| Frontend | HTML, CSS, JavaScript |
 | Backend | Node.js, Express |
 | Database | MongoDB |
-| Authentication | JWT / Session-based |
+| Authentication | Session-based |
 | Architecture | RESTful API, 3-Tier Architecture |
 
 ---
