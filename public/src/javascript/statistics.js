@@ -60,6 +60,48 @@ $(document).ready(function () {
 
 });
 
+// ==========================================
+// BACKGROUND TAB CATCH-UP LOGIC
+// ==========================================
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+        console.log("Analytics tab woke up! Checking connection...");
+        
+        if (!socket.connected) {
+            // Connection died. Tell it to reconnect. 
+            // The socket.on('connect') listener will handle the data fetch.
+            socket.connect();
+            
+        } else {
+            // Still connected! Just fetch the latest data immediately.
+            if (selectedGameId) {
+                loadStats(selectedGameId);
+                loadInsights(selectedGameId);
+            }
+        }
+    }
+});
+
+
+// ==========================================
+// SOCKET RECONNECTION LOGIC
+// ==========================================
+socket.on('connect', () => {
+    console.log("Analytics socket properly connected/reconnected!");
+    
+    // If they already selected a game from the dropdown before it fell asleep...
+    if (typeof selectedGameId !== 'undefined' && selectedGameId) {
+        
+        // Re-join the game room!
+        socket.emit('join_game', selectedGameId);
+        
+        // Fetch the hard numbers from the database to update the charts
+        loadStats(selectedGameId);
+        loadInsights(selectedGameId);
+    }
+});
+
+
 // LISTEN FOR LIVE UPDATES
 socket.on('stat_recorded', () => {
     console.log("Live stat recorded! Refreshing charts...");

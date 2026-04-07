@@ -10,7 +10,9 @@ const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
         origin: "*"
-    }
+    },
+    pingInterval: 25000,  // How often to ping the browser (25 seconds)
+    pingTimeout: 120000   // Give background tabs a full 2 minutes to reply before kicking them
 });
 
 // Make io accessible globally
@@ -43,6 +45,9 @@ io.on('connection', (socket) => {
         }
         
         if (activeGames[gameId].isRunning) return; 
+
+        // Prevent the clock from starting if time is already 0!
+        if (activeGames[gameId].seconds <= 0) return;
 
         activeGames[gameId].isRunning = true;
         
@@ -82,9 +87,19 @@ io.on('connection', (socket) => {
 
             // AUTO-END PERIOD
             if (activeGames[gameId].seconds <= 0) {
+                // Stop the loop
                 clearInterval(activeGames[gameId].interval);
                 activeGames[gameId].isRunning = false;
-                io.to(gameId).emit('clock_control_updated', { action: 'end' });
+                
+                // Broadcast 'pause' to update the UI to show the 'Resume' button instead of 'Start'
+                io.to(gameId).emit('clock_control_updated', { action: 'pause' });
+                
+                // Force a final database sync right now, bypassing your 10-second throttle!
+                // This guarantees the database records the 00:00 mark exactly.
+                Game.findByIdAndUpdate(gameId, { 
+                    gameClock: '00:00',
+                    status: 'PAUSED' // Ensures the DB knows the game is paused between quarters
+                }).catch(err => console.error("Failed to force-save final zero tick:", err));
             }
         }, 1000);
     });

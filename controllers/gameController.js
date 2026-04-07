@@ -252,11 +252,13 @@ exports.createGame = async (req, res) => {
         });
 
         // Calculate result if scores provided
-        if (teamScore !== undefined && opponentScore !== undefined) {
-            if (teamScore > opponentScore) {
-                game.result = "Win";
-            } else if (teamScore < opponentScore) {
-                game.result = "Loss";
+        if (game.status === 'ENDED') {
+            if (teamScore !== undefined && opponentScore !== undefined) {
+                if (teamScore > opponentScore) {
+                    game.result = "Win";
+                } else if (teamScore < opponentScore) {
+                    game.result = "Loss";
+                }
             }
         }
 

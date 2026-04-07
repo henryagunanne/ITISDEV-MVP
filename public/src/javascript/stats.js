@@ -393,7 +393,6 @@ function syncOnCourtFromOrder(selector) {
 function updateControls() {
     const period = gameData?.currentPeriod || 0;
     const status = gameData?.status || 'PLAYING';
-    console.log(period);
 
     if (status == 'ENDED') {
         $('#game-controls').html('<span class="badge bg-danger">FINAL</span>');
@@ -411,12 +410,18 @@ function updateControls() {
     }
     
     if (period != 0) quarter = period;
-    console.log(quarter);
 
     // ===== STAT BUTTONS =====
     let isOnCourt;
-   // Exclude FT buttons so they stay active when the clock pauses
-   $('.stat-btn').not('.ft-btn').prop('disabled', !isRunning);
+    // Normal stats (2pt, 3pt, reb, etc.) are only active when clock is running
+    $('.stat-btn').not('.ft-btn').prop('disabled', !isRunning);
+
+    // Free Throws MUST always lock when the clock is running.
+    // (If the clock is paused, we leave them alone so your Foul Socket listener can unlock them)
+    const fullPeriodSeconds = period > 4 ? 300 : 600;
+    if (isRunning || clockSeconds === 0 || clockSeconds === fullPeriodSeconds) {
+        $('.ft-btn').prop('disabled', true).addClass('disabled');
+    }
 
     // Disable stat recording for players not on court
     $('.player-row').each(function () {
@@ -438,9 +443,15 @@ function updateControls() {
     if(clockSeconds != 0 || isRunning){
         $('#ctrl-next-q').prop('disabled', true);
         $('#ctrl-ot').prop('disabled', true);
+
+        // Ensure the clock controls are unlocked while the quarter is active
+        $('#ctrl-start, #ctrl-resume, #ctrl-pause').prop('disabled', false);
     } else {
         $('#ctrl-next-q').prop('disabled', false);
         $('#ctrl-ot').prop('disabled', false);
+
+        // The clock is at zero. Lock all start/resume/pause buttons!
+        $('#ctrl-start, #ctrl-resume, #ctrl-pause').prop('disabled', true);
     }
 
 
@@ -452,7 +463,8 @@ function updateControls() {
     if (quarter < 4) {
         $('#ctrl-next-q').removeClass('d-none');
         $('#ctrl-ot').addClass('d-none');
-    }  
+    } 
+    
     
     
     if (!isRunning) {
@@ -871,8 +883,23 @@ function updateClockDisplay() {
 
 // ===================== CLOCK CONTROL =====================
 
+// Helper to ensure both teams have exactly 5 players on the court
+function checkFivePlayers() {
+    const homeCount = $('#home-players-panel .on-court').length;
+    const oppCount = $('#opp-players-panel .on-court-opp').length;
+
+    if (homeCount !== 5 || oppCount !== 5) {
+        alert(`Lineup Error: Home has ${homeCount} and Away has ${oppCount} on the court. Both teams must have exactly 5 players to run the clock.`);
+        return false;
+    }
+    return true;
+}
+
 // Game controls
 $('#ctrl-start').click(function () {
+    // Before starting the clock for the first time, we must ensure both teams have 5 players on the court.
+    if (!checkFivePlayers()) return;
+
     const period = gameData?.currentPeriod || 0;
 
     const isFirstQuarter = period === 1;
@@ -892,11 +919,13 @@ $('#ctrl-start').click(function () {
             awayStarters.push($(this).data('jersey'));
         });
 
+        /*
         // Prevent game start if there aren't 5 players
         if (homeStarters.length !== 5 || awayStarters.length !== 5) {
             alert("You must have exactly 5 players on the court for both teams to start the game.");
             return; // Stop execution, don't send the AJAX request
         } 
+        */
     
     } else {
         // If the game is just resuming from a pause, we don't want to send empty arrays 
@@ -904,7 +933,10 @@ $('#ctrl-start').click(function () {
         homeStarters = undefined;
         awayStarters = undefined;
     }
-    
+
+    // Tell the SERVER to start the clock
+    socket.emit('cmd_start_clock', gameId);
+
     $.ajax({ 
         url: `${API}/api/games/${gameId}`,
         method: 'PATCH', 
@@ -916,12 +948,9 @@ $('#ctrl-start').click(function () {
         }),
         success: function (res) {
             gameData = res.updatedGame || res;
-            
-            // Tell the SERVER to start the clock
-            socket.emit('cmd_start_clock', gameId);
         },
         error: function(err) {
-            console.error("Failed to start/resume game:", err);
+            console.error("Failed to startgame:", err);
             alert("Failed to start the game. Check the console.");
         }
     });
@@ -929,6 +958,9 @@ $('#ctrl-start').click(function () {
 
 
 $('#ctrl-pause').click(function () {
+    // Tell the SERVER to pause the clock
+    socket.emit('cmd_pause_clock', gameId);
+
     $.ajax({ 
         url: `${API}/api/games/${gameId}`, 
         method: 'PATCH', 
@@ -939,14 +971,21 @@ $('#ctrl-pause').click(function () {
         }),
         success: function (res) {
             gameData = res.updatedGame || res;
-
-            // Tell the SERVER to pause the clock
-            socket.emit('cmd_pause_clock', gameId);
+        },
+        error: function(err) {
+            console.error("Failed to pause game:", err);
+            alert("Failed to pause the game. Check the console.");
         }
     });
 });
 
 $('#ctrl-resume').click(function () {
+    // Before resuming the clock, we must ensure both teams have 5 players on the court.
+    if (!checkFivePlayers()) return;
+
+    // Tell the SERVER to start the clock
+    socket.emit('cmd_start_clock', gameId);
+
     $.ajax({ 
         url: `${API}/api/games/${gameId}`, 
         method: 'PATCH', 
@@ -954,9 +993,10 @@ $('#ctrl-resume').click(function () {
         data: JSON.stringify({ status: 'PLAYING' }),
         success: function (res) {
             gameData = res.updatedGame || res;
-
-            // Tell the SERVER to start the clock
-            socket.emit('cmd_start_clock', gameId);
+        },
+        error: function(err) {
+            console.error("Failed to resume game:", err);
+            alert("Failed to resume the game. Check the console.");
         }
     });
 });
@@ -985,6 +1025,10 @@ $('#ctrl-next-q').click(function () {
             
             // Tell the SERVER we reset the clock for a new quarter
             socket.emit('cmd_set_clock', { gameId: gameId, newSeconds: clockSeconds });
+        },
+        error: function(err) {
+            console.error("Failed to start next quarter:", err);
+            alert("Failed to start the next quarter. Check the console.");
         }
     });
 });
@@ -1004,12 +1048,19 @@ $('#ctrl-ot').click(function () {
             
             // Tell the SERVER we reset the clock for OT
             socket.emit('cmd_set_clock', { gameId: gameId, newSeconds: clockSeconds });
+        },
+        error: function(err) {
+            console.error("Failed to start overtime:", err);
+            alert("Failed to start overtime. Check the console.");
         }
     });
 });
 
 $('#ctrl-end').click(function () {
     if (!confirm('End the game?')) return;
+
+    // Tell the SERVER to kill the clock and broadcast the end state
+    socket.emit('cmd_end_game', gameId);
 
     $.ajax({ 
         url: `${API}/api/games/${gameId}`, 
@@ -1021,9 +1072,11 @@ $('#ctrl-end').click(function () {
         }),
         success: function (res) {
             gameData = res.updatedGame || res;
-            
-            // Tell the SERVER to kill the clock and broadcast the end state
-            socket.emit('cmd_end_game', gameId);
+
+        },
+        error: function(err) {
+            console.error("Failed to end game:", err);
+            alert("Failed to end the game. Check the console.");
         }
     });
 });
@@ -1032,11 +1085,33 @@ $('#ctrl-end').click(function () {
 // ======== WEBSOCKET LISTENERS =======
 
 function setupSocketListeners() {
+   // --- Listen for initial connections AND Reconnections ---
+    socket.on('connect', () => {
+        console.log("Socket properly connected/reconnected!");
+        
+        // Ensure we actually have a game loaded on the screen
+        if (typeof gameId !== 'undefined' && gameId) {
+            
+            // rejoin the room after a disconnect!
+            socket.emit('join_game', gameId);
+            
+            // Now that we are safely back in the room, ask for the data!
+            socket.emit('request_ui_sync', gameId);
+            
+            if (typeof fetchGameDetails === 'function') {
+                fetchGameDetails(); 
+            }
+        }
+    });
+
+
     // Listen for the relentless server ticks
     socket.on('clock_tick', (data) => {
         clockSeconds = data.clockSeconds;
         updateClockDisplay();
     });
+
+    
 
     // Listen for UI State changes (Play/Pause/End)
     socket.on('clock_control_updated', (data) => {
@@ -1051,6 +1126,7 @@ function setupSocketListeners() {
         } else if (data.action === 'pause') {
             isRunning = false;
             $('#ctrl-pause').addClass('d-none');
+            // $('.ft-btn').prop('disabled', true).addClass('disabled');
             
             // Smart toggle for Start vs Resume based on what period we are in
             const period = gameData?.currentPeriod || 1;
@@ -1272,3 +1348,27 @@ function setupSocketListeners() {
         }
     });
 }
+
+// =====================================
+
+// ==========================================
+// BACKGROUND TAB CATCH-UP LOGIC
+// ==========================================
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+        console.log("Tab woke up! Checking connection...");
+        
+        if (!socket.connected) {
+            // If the connection died, just tell it to reconnect.
+            // Our socket.on('connect') listener will handle the syncing once it's ready!
+            socket.connect();
+            
+        } else {
+            // If it never disconnected (just went to sleep briefly), sync immediately!
+            if (typeof gameId !== 'undefined' && gameId) {
+                socket.emit('request_ui_sync', gameId);
+                if (typeof fetchGameDetails === 'function') fetchGameDetails(); 
+            }
+        }
+    }
+});
